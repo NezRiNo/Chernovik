@@ -10,9 +10,12 @@
 public/                 сайт целиком (его и публикуем)
   index.html
   css/style.css
-  js/config.js          адрес и ключ Supabase
+  fonts/                шрифты Inter и Lora (лежат на сайте, без обращений к Google)
+  css/fonts.css, css/style.css
+  js/config.js          адрес и ключ Supabase, данные оператора для юридических страниц
   js/data.js            слой данных: Supabase или localStorage-демо
   js/app.js             интерфейс и страницы
+  js/vendor/            библиотека Supabase (тоже локально, без CDN)
 supabase/schema.sql     таблицы, права доступа (RLS), хранилище
 .github/workflows/      автодеплой на GitHub Pages
 ```
@@ -80,6 +83,49 @@ update public.profiles set role = 'editor' where nick in ('ник1', 'ник2', 
 
 ### 9. Проверка
 Зарегистрируйте тестового автора (режим инкогнито), отправьте работу, опубликуйте её редактором, поставьте реакцию, оставьте комментарий и пожалуйтесь на него: жалоба должна появиться у редактора.
+
+## Юридические страницы и данные оператора
+
+В подвале сайта есть ссылки на Пользовательское соглашение, Политику обработки данных и Согласие на обработку данных. Перед запуском заполните в `public/js/config.js` поля `OPERATOR_NAME`, `CONTACT` и `DB_REGION`. Пока они пусты, в текстах видны выделенные заглушки и пометка «Шаблон». Тексты должен проверить юрист.
+
+При регистрации нужны две отметки: принятие соглашения вместе с политикой и отдельное согласие на обработку данных. Дата и версия согласия сохраняются в `profiles.consent_at` и `profiles.consent_version`. Пользователь может сам удалить аккаунт в личном кабинете.
+
+Вместо загрузки фотографий есть 8 готовых аватаров (`a1`–`a8`), они рисуются в `app.js`.
+
+## Обновление уже работающего проекта
+
+Если база уже создана старой версией схемы, добавьте новые возможности (аватары, согласие, удаление аккаунта) одним запросом в SQL Editor:
+
+```sql
+alter table public.profiles add column if not exists avatar text not null default 'a1' check (avatar ~ '^a[1-8]$');
+alter table public.profiles add column if not exists consent_at timestamptz not null default now();
+alter table public.profiles add column if not exists consent_version text not null default '2026-11';
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id, nick, uni, avatar)
+  values (
+    new.id, new.raw_user_meta_data->>'nick', new.raw_user_meta_data->>'uni',
+    case when new.raw_user_meta_data->>'avatar' ~ '^a[1-8]$' then new.raw_user_meta_data->>'avatar' else 'a1' end
+  );
+  return new;
+end;
+$$;
+
+create or replace function public.delete_my_account()
+returns void language sql security definer set search_path = public, auth as $$
+  delete from auth.users where id = auth.uid();
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
+```
+
+## Как обновляется сайт
+
+- **Файлы сайта** (`public/`): после каждого коммита в ветку `main` GitHub Actions сам выкладывает сайт заново, это занимает 1–2 минуты. Обновите страницу через Ctrl+Shift+R.
+- **База данных**: SQL автоматически не применяется. Файл `supabase/schema.sql` в репозитории лишь хранится. Изменения базы нужно выполнить вручную в Supabase, SQL Editor.
+- Данные пользователей (аккаунты, работы) при обновлении сайта не затрагиваются, они живут в Supabase.
 
 ## Потерянный пароль
 

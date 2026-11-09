@@ -8,8 +8,11 @@ create table public.profiles (
   nick       text not null unique check (nick ~ '^[A-Za-z0-9][A-Za-z0-9._-]{1,22}[A-Za-z0-9]$'),
   uni        text,
   bio        text not null default '',
+  avatar     text not null default 'a1' check (avatar ~ '^a[1-8]$'),   -- готовый аватар из набора, фото не загружаются
   socials    jsonb not null default '{}'::jsonb,   -- {"vk": "...", "telegram": "...", "behance": "..."}
   role       text not null default 'author' check (role in ('author', 'editor')),
+  consent_at      timestamptz not null default now(),   -- когда пользователь дал согласие (отметка при регистрации)
+  consent_version text not null default '2026-11',      -- версия текста согласия
   created_at timestamptz not null default now()
 );
 
@@ -74,8 +77,13 @@ $$;
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, nick, uni)
-  values (new.id, new.raw_user_meta_data->>'nick', new.raw_user_meta_data->>'uni');
+  insert into public.profiles (id, nick, uni, avatar)
+  values (
+    new.id,
+    new.raw_user_meta_data->>'nick',
+    new.raw_user_meta_data->>'uni',
+    case when new.raw_user_meta_data->>'avatar' ~ '^a[1-8]$' then new.raw_user_meta_data->>'avatar' else 'a1' end
+  );
   return new;
 end;
 $$;
@@ -88,6 +96,14 @@ create or replace function public.increment_views(work_id uuid)
 returns void language sql security definer set search_path = public as $$
   update public.works set views = views + 1 where id = work_id and status = 'published';
 $$;
+
+-- Пользователь может сам удалить аккаунт: вместе с ним удаляются профиль, работы, комментарии и реакции.
+create or replace function public.delete_my_account()
+returns void language sql security definer set search_path = public, auth as $$
+  delete from auth.users where id = auth.uid();
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
 
 -- ============ Row Level Security ============
 

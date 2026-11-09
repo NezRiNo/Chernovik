@@ -27,6 +27,45 @@
   const isEditor = () => !!(S.me && S.me.role === 'editor');
   const isDemo = () => DB.mode === 'demo';
 
+  const CFG = window.APP_CONFIG || {};
+  const ph = (v, hint) => (v ? esc(v) : `<mark>[${hint}]</mark>`);
+
+  const ICONS = {
+    home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 4-6 8-6s7 2 8 6"/>',
+    shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    heart: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+    spark: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
+    pen: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
+    back: '<path d="M15 6l-6 6 6 6"/>',
+  };
+  const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+
+  // Готовые аватары вместо загрузки фотографий: фото человека это его персональные данные, а рисунок из набора нет.
+  const AV = [
+    ['#e5482d', '<circle cx="32" cy="32" r="11"/><g fill="none" stroke="#f6f3ec" stroke-width="3" stroke-linecap="round"><path d="M32 9v6M32 49v6M9 32h6M49 32h6M16 16l4 4M44 44l4 4M48 16l-4 4M20 44l-4 4"/></g>'],
+    ['#7a8f6a', '<path d="M14 48C12 26 26 14 50 14c0 24-12 36-32 34 4-9 10-15 18-19-10 3-17 9-22 19z"/>'],
+    ['#d9a441', '<path d="M40 12a21 21 0 1 0 12 34 17 17 0 0 1-12-34z"/><circle cx="48" cy="20" r="2.6"/>'],
+    ['#5b7186', '<g fill="none" stroke="#f6f3ec" stroke-width="4"><circle cx="20" cy="34" r="9"/><circle cx="44" cy="34" r="9"/><path d="M29 33c2-2 4-2 6 0"/></g>'],
+    ['#1d1c19', '<path d="M10 20c9-3 16-2 22 3v27c-6-5-13-6-22-3zM54 20c-9-3-16-2-22 3v27c6-5 13-6 22-3z"/>'],
+    ['#b9856a', '<path d="M50 12C31 12 17 25 17 43l-5 9 9-5c18 0 29-15 29-35z"/><path d="M20 44l16-16" fill="none" stroke="#b9856a" stroke-width="2.6" stroke-linecap="round"/>'],
+    ['#8a6f9e', '<path d="M14 50V18l11 8h14l11-8v32z"/><circle cx="25" cy="38" r="3" fill="#8a6f9e"/><circle cx="39" cy="38" r="3" fill="#8a6f9e"/>'],
+    ['#3f7d73', '<path d="M32 10l6.5 13.5 14.5 2-10.5 10.3 2.6 14.7L32 43.6 18.9 50.5l2.6-14.7L11 25.5l14.5-2z"/>'],
+  ];
+  const AV_NAMES = ['Солнце', 'Лист', 'Луна', 'Очки', 'Книга', 'Перо', 'Кот', 'Звезда'];
+  const defAv = (nick) => 'a' + ((String(nick || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % AV.length) + 1);
+  const avIndex = (k) => { const n = parseInt(String(k || '').slice(1), 10); return n >= 1 && n <= AV.length ? n - 1 : 0; };
+  function avatar(key, size = 40) {
+    const [bg, art] = AV[avIndex(key)];
+    return `<span class="avatar" style="width:${size}px;height:${size}px"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" fill="${bg}"/><g fill="#f6f3ec">${art}</g></svg></span>`;
+  }
+  const avOf = (u) => (u && u.avatar) || defAv(u && u.nick);
+  const avPicker = (cur) => `<div class="avpick" role="radiogroup" aria-label="Аватар">${AV.map((_, i) => `<label title="${AV_NAMES[i]}"><input type="radio" name="av" value="a${i + 1}"${avIndex(cur) === i ? ' checked' : ''}>${avatar('a' + (i + 1), 56)}</label>`).join('')}</div>`;
+  const pickedAv = () => (document.querySelector('input[name=av]:checked') || {}).value || 'a1';
+
   function toast(t) {
     const e = $('#toast');
     e.textContent = t; e.className = 'toast show';
@@ -60,22 +99,30 @@
   const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
       <span class="meta">${esc(w.form)}</span><h3>${esc(w.title)}</h3>
       <span class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
-      <span class="meta">♥ ${w.counts.like}&nbsp;&nbsp; ✦ ${w.counts.hit}&nbsp;&nbsp; ✎ ${w.counts.more}</span></span></a>`;
-  const empty = (title, text, btn) => `<div class="b empty s12"><b>${title}</b>${text}${btn ? `<div style="margin-top:16px">${btn}</div>` : ''}</div>`;
+      <span class="rx"><span title="Понравилось">${ic('heart', 'sm')}${w.counts.like}</span><span title="Зацепило">${ic('spark', 'sm')}${w.counts.hit}</span><span title="Хочу ещё">${ic('pen', 'sm')}${w.counts.more}</span></span></span></a>`;
+  const empty = (title, text, btn, span = 's12') => `<div class="b empty ${span}"><b>${title}</b><p>${text}</p>${btn ? `<div style="margin-top:18px">${btn}</div>` : ''}</div>`;
   const options = (list, cur, first) => (first ? `<option value="">${first}</option>` : '') + list.map((x) => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
 
+  function footer() {
+    return `<footer class="foot"><p>Все права на работы принадлежат авторам. Сайт бесплатный для авторов и читателей.</p>
+      <nav aria-label="Документы"><a href="#terms">Пользовательское соглашение</a><a href="#privacy">Политика обработки данных</a><a href="#consent">Согласие на обработку данных</a><a href="#about">О проекте</a></nav></footer>`;
+  }
+
   function shell(active, html) {
-    const nav = [['home', 'Главная'], ['catalog', 'Каталог'], ['publish', 'Опубликовать'], ['profile', 'Мой кабинет']];
-    if (isEditor() || isDemo()) nav.push(['mod', 'Редакция']);
-    nav.push(['about', 'О проекте']);
+    // [ключ, подпись в меню, подпись на телефоне, значок]
+    const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
+    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
+    const side = [...base, ...(isEditor() || isDemo() ? [mod] : []), about];
+    const tab = [...base, isEditor() ? mod : about];
     const cur = active === 'work' ? 'catalog' : active;
     const me = S.me
-      ? `<div class="who"><span class="avatar">${esc(S.me.nick[0].toUpperCase())}</span><div><b>${esc(S.me.nick)}</b><span>${isEditor() ? 'Редактор' : esc(S.me.uni || 'Автор')}</span></div></div><button class="btn sm" onclick="A.logout()">Выйти</button>`
-      : '<a class="btn p" href="#register">Регистрация</a><a class="btn" href="#login">Войти</a>';
+      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${isEditor() ? 'Редактор' : esc(S.me.uni || 'Автор')}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
+      : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
     return `<div class="shell"><aside class="side"><a class="brand" href="#home">Черновик<small>Веб-журнал студентов Новосибирска</small></a>
-      <nav class="nav" aria-label="Основное меню">${nav.map(([k, t]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
+      <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
       <div class="side-foot">${me}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</div></aside>
-      <main class="main">${html}</main></div>`;
+      <main class="main"><div class="page">${html}</div>${footer()}</main>
+      <nav class="tabbar" aria-label="Быстрая навигация">${tab.map(([k, , t, i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${t}</span></a>`).join('')}</nav></div>`;
   }
 
   /* ---------- Страницы ---------- */
@@ -88,7 +135,7 @@
     const f = ws[0];
     const feat = f
       ? `<a class="b tight s8 big-work" href="#work-${esc(f.id)}">${cover(f)}<span class="txt"><span class="meta">Новое в журнале, ${esc(f.form.toLowerCase())}</span><h3>${esc(f.title)}</h3><span class="meta">${esc(f.author.nick || '')}, ${esc(f.uni || '')}</span><span class="excerpt">${esc(f.body)}</span></span></a>`
-      : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>');
+      : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>', 's8');
     return `<div class="bento">
       <section class="b hero s8"><div class="label">Веб-журнал студентов Новосибирска</div>
         <h1>Здесь студенты публикуют то, что пишут, рисуют и снимают</h1>
@@ -125,13 +172,12 @@
     if (w.status === 'published' && !S.seen[id]) { S.seen[id] = 1; DB.incViews(id); }
     const [rx, cm] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id)]);
     const pubd = w.status === 'published';
-    const rb = [['like', '♥ Понравилось'], ['hit', '✦ Зацепило'], ['more', '✎ Хочу ещё']]
-      .map(([k, t]) => `<button class="rb${rx.mine.includes(k) ? ' on' : ''}" onclick="A.react('${esc(id)}','${k}')">${t} ${rx.counts[k]}</button>`).join('');
-    return `<article class="article"><a class="back" href="#catalog">Назад в каталог</a>
+    const rb = [['like', 'heart', 'Понравилось'], ['hit', 'spark', 'Зацепило'], ['more', 'pen', 'Хочу ещё']]
+      .map(([k, i, t]) => `<button class="rb${rx.mine.includes(k) ? ' on' : ''}" onclick="A.react('${esc(id)}','${k}')">${ic(i, 'sm')}${t} ${rx.counts[k]}</button>`).join('');
+    return `<article class="article"><a class="back" href="#catalog">${ic('back', 'sm')}Назад в каталог</a>
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
-      <div class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || '')}, ${fmtDate(w.created_at)}
-        ${pubd ? ` &nbsp;<button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div>
+      <div class="byline">${avatar(avOf(w.author), 36)}<div class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
       ${cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
@@ -139,20 +185,22 @@
       <h2 style="font-size:26px;margin-bottom:12px">Комментарии</h2>
       <div class="row" style="flex-wrap:nowrap"><input id="ci" aria-label="Комментарий" placeholder="${S.me ? 'Написать комментарий' : 'Войдите, чтобы комментировать'}"><button class="btn p" onclick="A.comment('${esc(id)}')">Отправить</button></div>
       <p class="hint">Комментарии проходят автопроверку. Анонимных комментариев нет.</p>
-      ${cm.map((c) => `<div class="comment"><b>${esc((c.author || {}).nick || 'автор')}</b><br>${esc(c.body)}<br><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div>`).join('')}` : ''}
+      ${cm.map((c) => `<div class="comment">${avatar(avOf(c.author), 32)}<div><b>${esc((c.author || {}).nick || 'автор')}</b><p>${esc(c.body)}</p><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div></div>`).join('')}` : ''}
     </article>`;
   };
 
   V.register = async () => {
     if (S.me) { location.hash = 'profile'; return ''; }
-    return `<div class="bento"><section class="b s6 hero"><div class="label">Регистрация</div><h1 style="font-size:clamp(30px,3.6vw,44px)">Ваша работа заслуживает читателей</h1>
-      <p class="lead">Почта не нужна: хватит ника и пароля. Все права на работы остаются у вас.</p></section>
-      <section class="b s6"><div class="field"><label for="nk">Ник</label><input id="nk" autocomplete="username" maxlength="24" placeholder="например, mila_writes"><div class="hint">Латиница, цифры, точка, дефис, подчёркивание, 3–24 символа. Ник увидят все читатели, и по нему вы будете входить.</div></div>
-      <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="new-password" placeholder="не меньше 8 символов"><div class="hint">Запомните или сохраните пароль: восстановить его по почте нельзя.</div></div>
+    return `<div class="bento"><section class="b s5 hero"><div class="label">Регистрация</div><h1 style="font-size:clamp(30px,3.4vw,44px)">Ваша работа заслуживает читателей</h1>
+      <p class="lead">Почту, телефон и настоящее имя мы не просим: хватит ника и пароля. Все права на работы остаются у вас.</p></section>
+      <section class="b s7"><div class="field"><label for="nk">Ник</label><input id="nk" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="24" placeholder="например, mila_writes"><div class="hint">Латиница, цифры, точка, дефис, подчёркивание, 3–24 символа. Ник увидят все читатели, и по нему вы будете входить. Не используйте настоящие имя и фамилию.</div></div>
+      <div class="field"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="new-password" placeholder="не меньше 8 символов"><div class="hint">Сохраните пароль: восстановить его по почте нельзя.</div></div>
       <div class="field"><label for="un">Вуз</label><select id="un">${options(UNIS)}</select></div>
-      <label class="check"><input id="ag" type="checkbox"><span>Я принимаю <a href="#terms" style="text-decoration:underline">Пользовательское соглашение</a>: права на работы остаются у авторов, плата не взимается</span></label>
-      <div class="err" id="er"></div><button class="btn p" id="go" onclick="A.reg()">Создать аккаунт</button>
-      <p class="hint" style="margin-top:14px">Уже есть аккаунт? <a href="#login" style="text-decoration:underline">Войти</a></p></section></div>`;
+      <div class="field"><label>Аватар</label>${avPicker('a1')}<div class="hint">Вместо фотографий готовые аватары: так проще сохранить анонимность.</div></div>
+      <label class="check"><input id="ag" type="checkbox"><span>Я принимаю <a href="#terms" target="_blank" rel="noopener">Пользовательское соглашение</a> и ознакомился с <a href="#privacy" target="_blank" rel="noopener">Политикой обработки данных</a></span></label>
+      <label class="check"><input id="cs" type="checkbox"><span>Даю <a href="#consent" target="_blank" rel="noopener">согласие на обработку данных</a>, включая показ моего ника, вуза и аватара всем посетителям сайта. Мне есть 18 лет, либо у меня есть согласие родителей</span></label>
+      <div class="err" id="er"></div><button class="btn p big" id="go" onclick="A.reg()" style="width:100%">Создать аккаунт</button>
+      <p class="hint" style="margin-top:14px">Уже есть аккаунт? <a href="#login">Войти</a></p></section></div>`;
   };
 
   V.login = async () => {
@@ -172,17 +220,19 @@
     const reacts = ws.reduce((a, w) => a + w.counts.like + w.counts.hit + w.counts.more, 0);
     const soc = S.me.socials || {};
     return `<div class="bento">
-      <section class="b ink s4"><div class="row" style="margin-bottom:22px"><span class="avatar" style="width:64px;height:64px;font-size:30px;background:var(--paper);color:var(--ink)">${esc(S.me.nick[0].toUpperCase())}</span>
-        <div><div style="font:26px Lora,serif">${esc(S.me.nick)}</div><div style="opacity:.7">${esc(S.me.uni || '')}</div></div></div>
+      <section class="b ink s4" style="align-self:start"><div class="row" style="margin-bottom:22px">${avatar(avOf(S.me), 64)}
+        <div style="min-width:0"><div style="font:26px/1.2 Lora,serif;word-break:break-word">${esc(S.me.nick)}</div><div style="opacity:.7">${esc(S.me.uni || '')}</div></div></div>
         <div class="stats"><div><div class="stat">${views}</div><span>просмотров</span></div><div><div class="stat">${reacts}</div><span>реакций</span></div><div><div class="stat">${ws.length}</div><span>работ</span></div></div></section>
       <section class="b s8"><div class="label">О себе и ссылки</div>
+        <div class="field"><label>Аватар</label>${avPicker(avOf(S.me))}</div>
         <div class="field"><label for="bio">О себе</label><textarea id="bio" rows="2" maxlength="300">${esc(S.me.bio || '')}</textarea></div>
-        <div class="row" style="align-items:flex-start;margin-bottom:16px">
-          <div style="flex:1;min-width:140px"><label for="un">Вуз</label><select id="un">${options(UNIS, S.me.uni, 'Не выбран')}</select></div>
-          <div style="flex:1;min-width:140px"><label for="vk">VK</label><input id="vk" value="${esc(soc.vk || '')}" placeholder="vk.com/..."></div>
-          <div style="flex:1;min-width:140px"><label for="tg">Telegram</label><input id="tg" value="${esc(soc.telegram || '')}" placeholder="@ник"></div>
-          <div style="flex:1;min-width:140px"><label for="bh">Behance</label><input id="bh" value="${esc(soc.behance || '')}" placeholder="behance.net/..."></div></div>
-        <button class="btn" onclick="A.saveProfile()">Сохранить профиль</button></section>
+        <div class="grid2 two">
+          <div class="field"><label for="un">Вуз</label><select id="un">${options(UNIS, S.me.uni, 'Не выбран')}</select></div>
+          <div class="field"><label for="vk">VK</label><input id="vk" value="${esc(soc.vk || '')}" placeholder="vk.com/..."></div>
+          <div class="field"><label for="tg">Telegram</label><input id="tg" value="${esc(soc.telegram || '')}" placeholder="@ник"></div>
+          <div class="field"><label for="bh">Behance</label><input id="bh" value="${esc(soc.behance || '')}" placeholder="behance.net/..."></div></div>
+        <div class="row"><button class="btn p" onclick="A.saveProfile()">Сохранить профиль</button><button class="btn" onclick="A.logout()">Выйти из аккаунта</button></div>
+        <p class="hint" style="margin-top:16px">Не указывайте в профиле настоящие имя, телефон и другие личные данные: всё, что вы напишете в «О себе» и ссылках, видно всем. <button class="linkbtn" onclick="A.delAccount()">Удалить аккаунт</button></p></section>
       <section class="b s12"><div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="label" style="margin:0">Мои работы</div><a class="btn p sm" href="#publish" onclick="S_edit(null)">Опубликовать новую</a></div>
         ${ws.length ? ws.map((w) => `<div class="list-row"><a class="t" href="#work-${esc(w.id)}">${esc(w.title)}</a>
           <div class="row"><span class="badge ${STATUS[w.status][1]}">${STATUS[w.status][0]}</span>${w.status === 'fix' ? `<button class="btn sm" onclick="A.edit('${esc(w.id)}')">Исправить</button>` : ''}</div>
@@ -194,8 +244,8 @@
     const w = S.editId ? await DB.getWork(S.editId) : null;
     return `<h1 class="page-title">${w ? 'Правки к работе' : 'Новая работа'}</h1><div class="bento">
       <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
-        <div class="row" style="align-items:flex-start;margin-bottom:16px"><div style="flex:1;min-width:150px"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
-        <div style="flex:1;min-width:150px"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
+        <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
+        <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 2 МБ. Без обложки подставим рисунок по умолчанию.</div></div>
@@ -246,14 +296,47 @@
     ['Модерация', 'Каждая работа проходит проверку редакции до публикации. Редактор может опубликовать работу, вернуть её на доработку с комментарием или отклонить с объяснением причины. Мы стараемся отвечать в течение 3 рабочих дней. Статус работы виден в личном кабинете.'],
     ['Комментарии и реакции', 'Комментировать и оставлять реакции могут только зарегистрированные пользователи. Анонимные комментарии не допускаются. Комментарии проходят автоматическую проверку, а редакция вправе скрыть комментарий, нарушающий правила уважительного общения.'],
     ['Жалобы', 'Любую работу или комментарий можно отправить на проверку, выбрав причину жалобы. Редакция рассматривает жалобы и может скрыть материал, снять работу с публикации или отклонить жалобу. Заведомо ложные жалобы считаются нарушением Соглашения.'],
-    ['Персональные данные', 'Мы храним только данные, необходимые для работы Сайта: ник, пароль (в зашифрованном виде), вуз, добавленные вами ссылки и ваши работы. Не указывайте в профиле и в работах лишние сведения о себе: всё, что вы опубликовали, увидят другие читатели. Вы можете запросить удаление аккаунта и всех данных, написав в редакцию.'],
+    ['Персональные данные', 'Какие данные мы обрабатываем, зачем и как долго, описано в Политике обработки данных. Мы не запрашиваем почту, телефон и настоящее имя. Всё, что вы опубликовали, увидят другие читатели. Удалить аккаунт и все свои данные можно самостоятельно в личном кабинете.'],
     ['Бесплатность', 'Сайт не взимает плату ни с авторов, ни с читателей и не размещает платную рекламу внутри работ.'],
     ['Ответственность и санкции', 'За нарушения редакция вправе предупредить автора, скрыть материал или заблокировать аккаунт. Редакция не отвечает за мнения авторов, но вправе удалить материалы, нарушающие Соглашение.'],
     ['Изменение Соглашения', 'Мы можем обновлять Соглашение. О существенных изменениях сообщим на почту и на Сайте. Продолжая пользоваться Сайтом, вы соглашаетесь с новой редакцией.'],
   ];
-  V.terms = async () => `<div class="article legal"><div class="meta">Редакция от ноября 2026</div><h1 class="page-title">Пользовательское соглашение</h1>
-    ${TERMS.map((t, i) => `<h2>${i + 1}. ${t[0]}</h2><p>${t[1]}</p>`).join('')}
-    <p class="meta">Текст ознакомительный. Перед запуском его должен проверить юрист.</p></div>`;
+  const OPN = () => ph(CFG.OPERATOR_NAME, 'название или ФИО оператора');
+  const CON = () => ph(CFG.CONTACT, 'почта или адрес для обращений');
+  const legalPage = (title, intro, sections) => `<div class="legal"><div class="meta">Редакция от ноября 2026</div><h1 class="page-title">${title}</h1>
+    ${CFG.OPERATOR_NAME && CFG.CONTACT ? '' : '<div class="tpl">Шаблон для ознакомления. Перед запуском впишите данные оператора в config.js (места выделены) и проверьте текст у юриста.</div>'}
+    ${intro}${sections.map((x, i) => `<h2>${i + 1}. ${x[0]}</h2>${x[1]}`).join('')}</div>`;
+
+  V.terms = async () => legalPage('Пользовательское соглашение', '', TERMS.map((t) => [t[0], `<p>${t[1]}</p>`]));
+
+  V.privacy = async () => legalPage('Политика обработки данных',
+    '<p>Здесь объясняется, какие данные обрабатывает веб-журнал «Черновик» (далее — «Сайт»), зачем и как вы можете ими управлять. Политика подготовлена с учётом Федерального закона от 27.07.2006 № 152-ФЗ «О персональных данных». Пользуясь Сайтом, вы подтверждаете, что ознакомились с ней.</p>',
+    [
+      ['Оператор', `<p>Оператор данных: ${OPN()}.<br>Контакты для обращений: ${CON()}.</p>`],
+      ['Какие данные мы обрабатываем', `<ul><li>ник и вуз, которые вы указали;</li><li>пароль, он хранится только в виде необратимого хеша: мы не знаем ваш пароль и не можем его прочитать;</li><li>аватар, выбранный из готового набора;</li><li>«о себе» и ссылки на соцсети, если вы решили их указать;</li><li>ваши работы, описания, комментарии, реакции и жалобы;</li><li>технические данные: IP-адрес, дата и время запросов, сведения о браузере (их фиксируют сервисы хостинга и базы данных), а также служебный ключ входа в памяти браузера, чтобы вы оставались в аккаунте.</li></ul>
+        <p>Мы не запрашиваем почту, телефон, настоящие имя и фамилию, фотографии и документы. Не указывайте их в профиле, описаниях и комментариях.</p>`],
+      ['Зачем нужны данные', '<ul><li>регистрация и вход в аккаунт;</li><li>публикация работ и их проверка редактором;</li><li>комментарии, реакции и жалобы;</li><li>показ вам статистики по вашим работам;</li><li>защита Сайта от спама и злоупотреблений;</li><li>ответы на ваши обращения.</li></ul>'],
+      ['Основание обработки', '<p>Ваше согласие, которое вы даёте отметкой при регистрации, и исполнение Пользовательского соглашения. Дата и версия согласия сохраняются.</p>'],
+      ['Что видят другие', '<p>Опубликованные работы, ник, вуз, аватар, «о себе» и ссылки видны всем посетителям Сайта, их могут сохранить другие люди или найти поисковики. Публикуйте только то, что готовы показать открыто. Хеш пароля и технические данные другим пользователям не раскрываются.</p>'],
+      ['Передача третьим лицам', `<p>Мы не продаём данные и не передаём их для рекламы. Для работы Сайта используются хостинг (GitHub Pages) и облачная база данных с авторизацией (Supabase), они обрабатывают данные по нашему поручению. Серверы базы данных расположены: ${ph(CFG.DB_REGION, 'страна и регион размещения')}. Шрифты и скрипты загружаются с самого Сайта, сервисы аналитики и рекламы не подключены.</p>`],
+      ['Сроки хранения', '<p>Данные хранятся, пока существует ваш аккаунт. После удаления аккаунта профиль, работы, комментарии и реакции удаляются из базы. Копии могут сохраняться в резервных копиях поставщика не дольше <mark>[срок]</mark>. Технические журналы хранятся по правилам хостинга.</p>'],
+      ['Ваши права', `<ul><li>узнать, какие данные о вас обрабатываются;</li><li>изменить данные профиля, аватар, «о себе» и ссылки в личном кабинете;</li><li>удалить аккаунт и все свои данные кнопкой «Удалить аккаунт» в личном кабинете;</li><li>отозвать согласие: это равно удалению аккаунта или письму по контактам оператора;</li><li>обратиться к оператору (${CON()}) и получить ответ в срок, установленный законом.</li></ul>`],
+      ['Защита данных', '<p>Соединение с Сайтом защищено HTTPS. Доступ к данным ограничен правилами на уровне базы: читатель видит только опубликованное, автор свои материалы, редактор рабочие разделы. Роли редакторов выдаёт администратор.</p>'],
+      ['Возраст', '<p>Если вам нет 18 лет, регистрируйтесь только с согласия родителей или иных законных представителей.</p>'],
+      ['Изменения политики', '<p>Мы можем обновлять Политику. Актуальная версия всегда доступна по ссылке в подвале Сайта.</p>'],
+    ]);
+
+  V.consent = async () => legalPage('Согласие на обработку данных',
+    `<p>Я, пользователь Сайта «Черновик», свободно, своей волей и в своём интересе даю ${OPN()} (далее — «Оператор») согласие на обработку моих персональных данных на условиях ниже.</p>`,
+    [
+      ['Какие данные', '<p>Ник, вуз, хеш пароля, выбранный аватар, «о себе» и ссылки на соцсети (если я их укажу), мои работы, описания, комментарии, реакции и жалобы, а также технические данные: IP-адрес, сведения о браузере, дата и время запросов.</p>'],
+      ['Цели', '<p>Создание и ведение аккаунта, публикация и проверка работ, комментарии и реакции, показ статистики, защита Сайта от злоупотреблений, ответы на мои обращения.</p>'],
+      ['Действия с данными', '<p>Сбор, запись, систематизация, накопление, хранение, уточнение, использование, передача поставщикам хостинга и базы данных для работы Сайта, блокирование, удаление и уничтожение. Обработка осуществляется с использованием средств автоматизации.</p>'],
+      ['Публикация данных', '<p>Я согласен, что мой ник, вуз, аватар, а также опубликованные мной работы, описания, комментарии, «о себе» и ссылки будут доступны неограниченному кругу лиц на Сайте.</p>'],
+      ['Срок и отзыв', `<p>Согласие действует до удаления моего аккаунта или его отзыва. Отозвать согласие можно кнопкой «Удалить аккаунт» в личном кабинете либо обращением к Оператору: ${CON()}.</p>`],
+      ['Возраст', '<p>Подтверждаю, что мне исполнилось 18 лет либо у меня есть согласие родителей или иных законных представителей.</p>'],
+      ['Как дано согласие', '<p>Согласие дано отметкой в форме регистрации. Дата и версия текста согласия сохраняются вместе с моим профилем.</p>'],
+    ]);
 
   /* ---------- Действия ---------- */
   window.S_edit = (id) => { S.editId = id; };
@@ -267,11 +350,11 @@
     const er = $('#er'), nick = val('nk'), pw = $('#pw').value, uni = val('un');
     const bad = !/^[A-Za-z0-9][A-Za-z0-9._-]{1,22}[A-Za-z0-9]$/.test(nick) ? 'Ник: 3–24 символа, латиница, цифры, точка, дефис или подчёркивание, без них по краям'
       : pw.length < 8 ? 'Пароль: минимум 8 символов'
-      : !$('#ag').checked ? 'Нужно принять Пользовательское соглашение' : '';
+      : !$('#ag').checked ? 'Нужно принять Пользовательское соглашение' : !$('#cs').checked ? 'Нужно дать согласие на обработку данных' : '';
     if (bad) { er.textContent = bad; return; }
     $('#go').disabled = true;
     try {
-      const r = await DB.signUp({ nick, password: pw, uni });
+      const r = await DB.signUp({ nick, password: pw, uni, avatar: pickedAv() });
       S.me = r.user; toast('Добро пожаловать, @' + nick); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
@@ -282,8 +365,12 @@
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор'); render(); };
   A.logout = async () => { await DB.signOut(); S.me = null; toast('Вы вышли'); go('home'); };
   A.saveProfile = async () => {
-    const patch = { bio: val('bio'), uni: val('un') || null, socials: { vk: val('vk'), telegram: val('tg'), behance: val('bh') } };
+    const patch = { avatar: pickedAv(), bio: val('bio'), uni: val('un') || null, socials: { vk: val('vk'), telegram: val('tg'), behance: val('bh') } };
     try { await DB.updateProfile(S.me.id, patch); Object.assign(S.me, patch); toast('Профиль сохранён'); render(); } catch (e) { fail(e); }
+  };
+  A.delAccount = async () => {
+    if (!confirm('Удалить аккаунт вместе со всеми вашими работами, комментариями и реакциями? Это нельзя отменить.')) return;
+    try { await DB.deleteAccount(S.me.id); S.me = null; toast('Аккаунт удалён'); go('home'); } catch (e) { fail(e); }
   };
   A.edit = (id) => { S.editId = id; go('publish'); };
   A.submit = async () => {

@@ -24,7 +24,7 @@
   };
   // Вход по нику без почты: ник превращается в служебный адрес, письма на него не уходят.
   const nickEmail = (nick) => nick.trim().toLowerCase() + '@' + (cfg.NICK_EMAIL_DOMAIN || 'users.chernovik.app');
-  const WORK_SELECT = '*, author:profiles!works_author_id_fkey(id, nick, uni), reactions(kind)';
+  const WORK_SELECT = '*, author:profiles!works_author_id_fkey(id, nick, uni, avatar), reactions(kind)';
 
   /* ================= Live (Supabase) ================= */
   const Live = {
@@ -39,8 +39,8 @@
       const { data } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
       return data || null;
     },
-    async signUp({ nick, password, uni }) {
-      const { data, error } = await sb.auth.signUp({ email: nickEmail(nick), password, options: { data: { nick, uni } } });
+    async signUp({ nick, password, uni, avatar }) {
+      const { data, error } = await sb.auth.signUp({ email: nickEmail(nick), password, options: { data: { nick, uni, avatar } } });
       check(error);
       if (!data.session) throw new Error('Не удалось войти сразу после регистрации. Сообщите редакции: в Supabase должно быть отключено подтверждение почты');
       return { user: await this._me(data.session) };
@@ -51,6 +51,11 @@
       return this._me(data.session);
     },
     async signOut() { await sb.auth.signOut(); },
+    async deleteAccount() {
+      const { error } = await sb.rpc('delete_my_account');
+      check(error);
+      await sb.auth.signOut();
+    },
     async updateProfile(id, patch) {
       const { error } = await sb.from('profiles').update(patch).eq('id', id);
       check(error);
@@ -101,7 +106,7 @@
     async incViews(id) { await sb.rpc('increment_views', { work_id: id }); },
 
     async listComments(workId) {
-      const { data, error } = await sb.from('comments').select('*, author:profiles(nick)')
+      const { data, error } = await sb.from('comments').select('*, author:profiles(nick, avatar)')
         .eq('work_id', workId).eq('hidden', false).order('created_at');
       check(error);
       return data;
@@ -188,16 +193,16 @@
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { /* хранилище недоступно */ } };
   const uid = () => 'x' + Math.random().toString(36).slice(2, 10);
   const user = (id) => DB.users.find((u) => u.id === id);
-  const pub = ({ id, nick, uni }) => ({ id, nick, uni });
+  const pub = ({ id, nick, uni, avatar }) => ({ id, nick, uni, avatar });
   const withMe = (u) => (u ? { ...u } : null);
 
   const Demo = {
     mode: 'demo',
 
     async init() { DB = load(); return withMe(user(DB.session)); },
-    async signUp({ nick, password, uni }) {
+    async signUp({ nick, password, uni, avatar }) {
       if (DB.users.some((u) => u.nick.toLowerCase() === nick.toLowerCase())) throw new Error('Этот ник уже занят');
-      const u = { id: uid(), nick, uni, bio: '', socials: {}, role: 'author', password };
+      const u = { id: uid(), nick, uni, avatar: avatar || 'a1', bio: '', socials: {}, role: 'author', password };
       DB.users.push(u); DB.session = u.id; save();
       return { user: withMe(u) };
     },
@@ -208,6 +213,14 @@
       return withMe(u);
     },
     async signOut() { DB.session = null; save(); },
+    async deleteAccount(id) {
+      DB.works = DB.works.filter((w) => w.author_id !== id);
+      DB.comments = DB.comments.filter((c) => c.author_id !== id);
+      DB.reactions = DB.reactions.filter((r) => r.user_id !== id);
+      DB.reports = DB.reports.filter((r) => r.reporter_id !== id);
+      DB.users = DB.users.filter((u) => u.id !== id);
+      DB.session = null; save();
+    },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
 
     _work(w) {
@@ -244,7 +257,7 @@
 
     async listComments(workId) {
       return DB.comments.filter((c) => c.work_id === workId && !c.hidden)
-        .map((c) => ({ ...c, created_at: new Date(c.created_at).toISOString(), author: { nick: user(c.author_id).nick } }));
+        .map((c) => ({ ...c, created_at: new Date(c.created_at).toISOString(), author: { nick: user(c.author_id).nick, avatar: user(c.author_id).avatar } }));
     },
     async addComment(workId, body, uidMe) {
       DB.comments.push({ id: uid(), work_id: workId, author_id: uidMe, body, hidden: false, created_at: Date.now() }); save();
