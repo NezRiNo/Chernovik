@@ -181,7 +181,8 @@
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
       ${w.tags && w.tags.length ? `<div class="tags" style="margin-bottom:12px">${w.tags.map((t) => `<button class="chip tag" onclick="A.setTag('${esc(t)}');go('catalog')">${esc(t)}</button>`).join('')}</div>` : ''}
-      <div class="byline">${avatar(avOf(w.author), 36)}<div class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
+      <div class="byline"><a href="#author-${esc(w.author_id)}" class="author-link" aria-label="Профиль автора">${avatar(avOf(w.author), 36)}</a><div class="meta"><a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a>, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
+      ${pubd ? `<div class="article-stats"><span>${ic('eye','sm')}${Number(w.views || 0)} просмотров</span><span>${ic('message','sm')}${cm.length} комментариев</span></div>` : ''}
       ${cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
@@ -272,8 +273,9 @@
     let body;
     if (S.tab === 'queue') {
       body = queue.length ? queue.map((w) => `<section class="b review s12"><div class="meta">${esc(w.form)}, ${esc(w.uni || '')}</div>
-        <div style="font:26px Lora,serif">${esc(w.title)}</div><div class="meta">${esc(w.author.nick || '')}</div>
+        <div style="font:22px Lora,serif">${esc(w.title)}</div><div class="meta">Автор: <a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a> · ${esc(w.uni || 'вуз не указан')}</div>
         <div class="body">${esc(w.body.slice(0, 1200))}</div>${w.description ? `<div class="meta">Описание автора: ${esc(w.description)}</div>` : ''}
+        ${w.cover_url ? `<div class="review-files"><div class="label">Прикреплённые файлы</div><a href="${esc(w.cover_url)}" target="_blank" rel="noopener noreferrer" class="review-file"><img src="${esc(w.cover_url)}" alt="Прикреплённая обложка"><span>Открыть оригинал ↗</span></a></div>` : '<div class="hint">Файлы к работе не прикреплены.</div>'}
         <div style="margin:14px 0"><label class="radio"><input type="checkbox">Соответствует правилам</label><label class="radio"><input type="checkbox">Нет плагиата</label><label class="radio"><input type="checkbox">Нет оскорблений и запрещённого контента</label></div>
         <textarea id="nt-${esc(w.id)}" rows="2" placeholder="Комментарий автору (обязателен при возврате и отклонении)"></textarea>
         <div class="row" style="margin-top:12px"><button class="btn p" onclick="A.modAct('${esc(w.id)}','published')">Опубликовать</button><button class="btn" onclick="A.modAct('${esc(w.id)}','fix')">Вернуть на доработку</button><button class="btn" onclick="A.modAct('${esc(w.id)}','rejected')">Отклонить</button></div></section>`).join('')
