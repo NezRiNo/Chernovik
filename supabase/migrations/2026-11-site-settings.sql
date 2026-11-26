@@ -24,3 +24,9 @@ insert into public.site_settings (id, settings) values ('main', '{
   "announcement_body":"",
   "about_text":"«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать."
 }'::jsonb) on conflict (id) do nothing;
+
+-- Column-level API privileges: public can read only site identity/content;
+-- authenticated users can submit changes, but RLS permits writes only to admins.
+grant select (id, settings) on table public.site_settings to anon, authenticated;
+grant insert (id, settings, updated_by) on table public.site_settings to authenticated;
+grant update (settings, updated_by, updated_at) on table public.site_settings to authenticated;
