@@ -64,6 +64,7 @@ create table public.comment_reactions (
   created_at timestamptz not null default now(),
   primary key (comment_id, user_id)
 );
+create index comment_reactions_user_idx on public.comment_reactions (user_id);
 
 create table public.reports (
   id          uuid primary key default gen_random_uuid(),
@@ -211,7 +212,7 @@ create policy "reports: editor updates" on public.reports for update
 alter table public.comment_reactions enable row level security;
 create policy "comment reactions: read all" on public.comment_reactions for select using (true);
 create policy "comment reactions: insert own" on public.comment_reactions for insert to authenticated
-  with check (user_id = auth.uid() and exists (select 1 from public.comments c where c.id = comment_id and c.hidden = false));
+  with check ((select auth.uid()) = user_id and exists (select 1 from public.comments c where c.id = comment_id and c.hidden = false));
 create policy "comment reactions: delete own" on public.comment_reactions for delete to authenticated
   using (user_id = auth.uid());
 grant select on public.comment_reactions to anon, authenticated;
