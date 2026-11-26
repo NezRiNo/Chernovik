@@ -214,7 +214,7 @@ create policy "comment reactions: read all" on public.comment_reactions for sele
 create policy "comment reactions: insert own" on public.comment_reactions for insert to authenticated
   with check ((select auth.uid()) = user_id and exists (select 1 from public.comments c where c.id = comment_id and c.hidden = false));
 create policy "comment reactions: delete own" on public.comment_reactions for delete to authenticated
-  using (user_id = auth.uid());
+  using ((select auth.uid()) = user_id);
 grant select on public.comment_reactions to anon, authenticated;
 grant insert, delete on public.comment_reactions to authenticated;
 
