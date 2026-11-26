@@ -121,7 +121,7 @@
     const manage = (canReview() || isDemo()) ? '<a class="manage-link" href="#manage" aria-label="Управление проектом" title="Управление проектом">'+ic('shield')+'<span>Управление</span></a>' : '';
     return `<div class="shell">
       <aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
-      <nav class="nav" aria-label="Основное меню">${base.map(([k,t,i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}${manage}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</nav>
+      <nav class="nav" aria-label="Основное меню">${base.map(([k,t,i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</nav>
       </aside>
       <main class="main"><header class="topbar"><div class="topbar-context">${active === 'home' ? 'Пространство для первых публикаций' : active === 'catalog' || active === 'work' ? 'Читайте и открывайте новое' : active === 'manage' || ['mod','admin','settings'].includes(active) ? 'Управление проектом' : ''}</div><div class="topbar-actions">${manage}${me}</div></header><div class="page">${html}</div>${footer()}</main>
       <nav class="tabbar" aria-label="Быстрая навигация">${base.map(([k,t,i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${k === 'publish' ? 'Создать' : t}</span></a>`).join('')}<a href="${S.me ? '#profile' : '#login'}" class="${cur === 'profile' ? 'on' : ''}">${S.me ? avatar(avOf(S.me),24) : ic('user')}<span>Кабинет</span></a></nav></div>`;
@@ -288,7 +288,7 @@
         <div class="row" style="margin-top:14px"><button class="btn p" onclick="A.repAct(${i},true)">${r.target_type === 'work' ? 'Снять с публикации' : 'Скрыть комментарий'}</button><button class="btn" onclick="A.repAct(${i},false)">Отклонить жалобу</button></div></section>`).join('')
         : empty('Новых жалоб нет', 'Когда читатели пожалуются на работу или комментарий, они появятся здесь.');
     }
-    return `<h1 class="page-title">Модерация</h1><div class="row" style="margin-bottom:20px">${tabs}</div><div class="bento">${body}</div>`;
+    return S.inManage ? `<div class="bento">${body}</div>` : `<h1 class="page-title">Модерация</h1><div class="row" style="margin-bottom:20px">${tabs}</div><div class="bento">${body}</div>`;
   };
 
   V.admin = async () => {
@@ -349,7 +349,7 @@
     if (!tabs.some(([k]) => k === S.manageTab)) S.manageTab = 'queue';
     const nav = tabs.map(([k,t]) => `<button class="manage-tab${S.manageTab === k ? ' on' : ''}" onclick="A.manageTab('${k}')">${t}</button>`).join('');
     let body = '';
-    if (S.manageTab === 'queue' || S.manageTab === 'reports') { S.tab = S.manageTab; body = await V.mod(); }
+    if (S.manageTab === 'queue' || S.manageTab === 'reports') { S.tab = S.manageTab; S.inManage = true; body = await V.mod(); S.inManage = false; }
     else if (S.manageTab === 'team') body = await V.admin();
     else if (S.manageTab === 'settings') body = await V.settings();
     return `<div class="manage-page"><div class="manage-heading"><div><span class="eyebrow">Рабочее пространство</span><h1 class="page-title">Управление</h1><p class="lead">Всё необходимое для работы с журналом — в одном месте.</p></div></div><nav class="manage-tabs" aria-label="Разделы управления">${nav}</nav><div class="manage-content">${body}</div></div>`;
