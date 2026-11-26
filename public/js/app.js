@@ -81,7 +81,7 @@
   const fail = (e) => toast(e.message || 'Что-то пошло не так. Попробуйте ещё раз');
   const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   const paragraphs = (t) => String(t || '').split(/\n{2,}/).map((p) => `<p>${esc(p)}</p>`).join('');
-  const safeUrl = (u) => (/^(https:|data:(image|audio)\\/)/.test(u || '') ? u : null);
+  const safeUrl = (u) => (typeof u === 'string' && (u.startsWith('https:') || u.startsWith('data:image/') || u.startsWith('data:audio/')) ? u : null);
 
   /* ---------- Иллюстрации-заглушки ---------- */
   const SCENES = [
