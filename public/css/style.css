@@ -312,5 +312,43 @@ button.chip.tag { pointer-events:auto; }
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
 
-/* Административная страница команды */
-.team-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line,rgba(0,0,0,.12))}.team-row:last-child{border-bottom:0}.team-row>.row{align-items:center;gap:8px}.team-row select{min-width:150px;max-width:100%}@media(max-width:640px){.team-row{align-items:stretch;flex-direction:column}.team-row>.row{width:100%}.team-row select{flex:1;min-width:0}}
+/* ---------- Панель администратора ---------- */
+.admin-page { max-width: 1040px; }
+.admin-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:18px; margin-bottom:20px; }
+.admin-heading .page-title { margin-bottom:8px; }
+.admin-heading .lead { margin:0; max-width:620px; }
+.admin-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--gap); margin-bottom:22px; }
+.admin-stat { display:flex; flex-direction:column; gap:7px; min-width:0; text-decoration:none; }
+.admin-stat strong { font:400 clamp(30px,3vw,42px)/1.1 Lora,serif; }
+.admin-stat .hint { margin:0; }
+a.admin-stat:hover { border-color:var(--ink); }
+.admin-team { padding:clamp(18px,2.4vw,28px); }
+.admin-section-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+.admin-section-head h2 { font-size:24px; margin-bottom:5px; }
+.admin-section-head p { margin:0; }
+.admin-filters { display:grid; grid-template-columns:minmax(0,1fr) 210px; gap:10px; padding-bottom:10px; border-bottom:1px solid var(--line); }
+.team-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--line); }
+.team-row:last-child { border-bottom:0; }
+.team-row[hidden] { display:none; }
+.team-person { display:flex; align-items:center; gap:12px; min-width:0; }
+.team-person > div { min-width:0; }
+.team-person b { overflow-wrap:anywhere; }
+.team-self { display:inline-block; margin-top:4px; font-size:12px; color:var(--mute); }
+.team-controls { align-items:center; gap:8px; flex:none; }
+.team-controls select { min-width:160px; }
+.team-controls button { min-width:104px; }
+.team-controls button:disabled, .team-controls select:disabled { opacity:.55; cursor:not-allowed; }
+.admin-footnote { border-top:1px solid var(--line); padding-top:14px; margin-top:4px; }
+@media(max-width:700px) {
+  .admin-stats { grid-template-columns:1fr 1fr; }
+  .admin-stat:last-child { grid-column:span 2; }
+  .admin-filters { grid-template-columns:1fr; }
+  .team-row { align-items:stretch; flex-direction:column; }
+  .team-controls { width:100%; }
+  .team-controls select { flex:1; min-width:0; }
+}
+@media(max-width:420px) {
+  .admin-stats { grid-template-columns:1fr; }
+  .admin-stat:last-child { grid-column:auto; }
+  .team-controls button { min-width:92px; }
+}
