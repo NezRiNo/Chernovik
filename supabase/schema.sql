@@ -29,6 +29,7 @@ create table public.works (
   description  text not null default '' check (char_length(description) <= 1000),
   tags         text[] not null default '{}' check (cardinality(tags) <= 5 and array_position(tags, null) is null),
   cover_url    text,
+  attachments  jsonb not null default '[]'::jsonb check (jsonb_typeof(attachments) = 'array'),
   status       text not null default 'review' check (status in ('review', 'published', 'fix', 'rejected')),
   editor_note  text,
   views        integer not null default 0,
