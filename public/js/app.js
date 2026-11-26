@@ -194,7 +194,7 @@
     if (w.status === 'published' && !S.seen[id]) { S.seen[id] = 1; DB.incViews(id); }
     const [rx, cm, follow] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id, S.me && S.me.id), DB.followInfo(w.author_id, S.me && S.me.id)]);
     const pubd = w.status === 'published';
-    const likeCount = Number.isFinite(safeCount(rx.counts && rx.counts.like);
+    const likeCount = safeCount(rx.counts && rx.counts.like);
     const rb = `<button class="rb rb-like${rx.mine.includes('like') ? ' on' : ''}" aria-label="Нравится" title="Нравится" onclick="A.react('${esc(id)}','like')">${ic('heart', 'sm')}<span>${likeCount}</span></button>`;
     const followButton = S.me && S.me.id !== w.author_id
       ? `<button class="btn ${follow.following ? '' : 'p'} sm" onclick="A.toggleFollow('${esc(w.author_id)}')">${follow.following ? 'Вы подписаны' : 'Подписаться'}</button>`
