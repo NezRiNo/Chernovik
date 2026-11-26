@@ -659,3 +659,45 @@ a.admin-stat:hover { border-color:var(--ink); }
   .home-page-simple .home-work-grid { grid-template-columns:1fr; }
   .home-page-simple .home-section-head { flex-direction:column; gap:8px; }
 }
+
+
+/* ---------- Подписки и лаконичный редактор ---------- */
+.author-follow-row { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:4px 0 20px; padding:13px 16px; border:1px solid var(--line); border-radius:13px; background:var(--card); }
+.author-follow-stats { display:flex; flex-wrap:wrap; gap:18px; color:var(--mute); font-size:13px; }
+.author-follow-stats b { color:var(--ink); font-size:16px; font-weight:600; }
+.following-list { display:flex; flex-wrap:wrap; gap:10px; }
+.following-person { display:flex; align-items:center; gap:9px; padding:9px 12px; border:1px solid var(--line); border-radius:12px; background:var(--card); min-width:0; }
+.following-person span { display:grid; min-width:0; }
+.following-person b { font-size:14px; font-weight:600; }
+.following-person small { color:var(--mute); font-size:12px; }
+.publish-editor { border-radius:16px; }
+.editor-progress,.editor-field-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.editor-progress { margin-bottom:18px; }
+.editor-progress .hint,.editor-field-head .hint { margin:0; }
+.editor-toolbar { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:7px; border:1px solid var(--line); border-bottom:0; border-radius:10px 10px 0 0; background:var(--paper); }
+.editor-toolbar button { min-width:34px; height:32px; padding:0 9px; border:0; border-radius:7px; background:transparent; color:var(--mute); cursor:pointer; font:600 14px Inter,sans-serif; }
+.editor-toolbar button:hover { background:var(--img); color:var(--ink); }
+.editor-toolbar .toolbar-preview { margin-left:auto; padding:0 12px; border:1px solid var(--line); font-weight:500; }
+.toolbar-spacer { flex:1; }
+.editor-body { border-radius:0 0 10px 10px; min-height:240px; line-height:1.7; }
+.editor-upload { padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--paper); }
+.upload-drop { display:flex; align-items:center; gap:12px; padding:14px; border:1px dashed var(--line); border-radius:10px; cursor:pointer; margin:0; background:var(--card); }
+.upload-drop:hover { border-color:var(--acc); }
+.upload-drop > span:not(.upload-icon) { display:none; }
+.upload-icon { display:grid; place-items:center; width:38px; height:38px; flex:none; border-radius:10px; background:color-mix(in srgb,var(--acc) 12%,transparent); color:var(--acc); font-size:22px; }
+.upload-drop b { font-size:14px; font-weight:600; }
+.upload-drop small { margin-left:auto; color:var(--mute); font-size:12px; text-align:right; }
+.visually-hidden-file { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+.selected-attachment { display:block; padding:7px 10px; border-radius:8px; background:var(--card); font-size:13px; overflow-wrap:anywhere; }
+.preview-dialog { max-width:720px; max-height:85vh; overflow:auto; }
+.preview-dialog h2 { font:32px/1.2 Lora,serif; margin:8px 0 20px; }
+.preview-dialog .prose { padding:8px 0 18px; }
+@media(max-width:640px) {
+ .author-follow-row { align-items:flex-start; flex-direction:column; }
+ .author-follow-row .btn { width:100%; }
+ .editor-progress { align-items:flex-start; flex-direction:column; }
+ .upload-drop { align-items:flex-start; flex-wrap:wrap; }
+ .upload-drop small { width:100%; margin:0 0 0 50px; text-align:left; }
+ .editor-body { min-height:190px; }
+ .preview-dialog h2 { font-size:26px; }
+}
