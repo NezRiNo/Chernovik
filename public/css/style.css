@@ -352,3 +352,15 @@ a.admin-stat:hover { border-color:var(--ink); }
   .admin-stat:last-child { grid-column:auto; }
   .team-controls button { min-width:92px; }
 }
+
+.brand { display:flex; align-items:center; gap:10px; }
+.brand-mark { flex:none; object-fit:contain; }
+.brand small { display:block; }
+.settings-card { padding:clamp(18px,2.5vw,30px); }
+.settings-card section { padding:0 0 22px; margin:0 0 22px; border-bottom:1px solid var(--line); }
+.settings-card h2 { font:24px/1.25 Lora,Georgia,serif; margin:0 0 12px; }
+.site-field { display:block; margin:13px 0; color:var(--mute); font-size:14px; }
+.site-field input,.site-field textarea { display:block; width:100%; margin-top:6px; color:var(--ink); background:var(--field); border:1px solid var(--line); border-radius:9px; padding:11px 13px; font:inherit; }
+.site-field textarea { resize:vertical; min-height:76px; }
+.site-announcement h2 { margin:6px 0; font:24px/1.25 Lora,Georgia,serif; }
+.settings-card .btn { margin-top:8px; }
