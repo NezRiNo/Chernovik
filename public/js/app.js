@@ -99,6 +99,16 @@
     return `<span class="cover"><svg viewBox="0 0 240 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="240" height="160" fill="${TINTS[i]}"/><g fill="#1b1a17">${SCENES[i]}</g></svg></span>`;
   }
 
+  const workMedia = (w) => {
+    const items = Array.isArray(w.attachments) ? w.attachments : [];
+    const images = items.filter((x) => x.type === 'image' && safeUrl(x.url));
+    const audio = items.find((x) => x.type === 'audio' && safeUrl(x.url));
+    if (!images.length && w.cover_url && safeUrl(w.cover_url)) images.push({ url: w.cover_url, name: 'Обложка' });
+    const gallery = images.length ? `<div class="work-gallery" aria-label="Изображения работы">${images.map((x,i) => `<a class="gallery-image" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(x.url)}" alt="${esc(x.name || ('Изображение ' + (i + 1)))}" loading="lazy"></a>`).join('')}</div>` : '';
+    const player = audio ? `<div class="work-audio"><div class="audio-label">♫ ${esc(audio.name || 'Аудиозапись')}</div><audio controls preload="metadata" src="${esc(audio.url)}">Ваш браузер не поддерживает аудио.</audio></div>` : '';
+    return gallery + player;
+  };
+
   /* ---------- Общие куски разметки ---------- */
   const tagsOf = (tags = []) => (Array.isArray(tags) ? tags : []).slice(0, 5).map((t) => `<span class="chip tag">${esc(t)}</span>`).join('');
   const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
@@ -183,7 +193,7 @@
       ${w.tags && w.tags.length ? `<div class="tags" style="margin-bottom:12px">${w.tags.map((t) => `<button class="chip tag" onclick="A.setTag('${esc(t)}');go('catalog')">${esc(t)}</button>`).join('')}</div>` : ''}
       <div class="byline"><a href="#author-${esc(w.author_id)}" class="author-link" aria-label="Профиль автора">${avatar(avOf(w.author), 36)}</a><div class="meta"><a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a>, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
       ${pubd ? `<div class="article-stats"><span>${ic('eye','sm')}${Number(w.views || 0)} просмотров</span><span>${ic('message','sm')}${cm.length} комментариев</span></div>` : ''}
-      ${cover(w)}
+      ${workMedia(w) || cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
       ${pubd ? `<div class="reactions">${rb}</div>
@@ -262,9 +272,12 @@
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
-        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" onchange="A.showSelectedFile(this)"><div class="hint">JPG, PNG или WebP до 50 МБ.</div><div id="selected-file" class="attached-file"></div>
-          ${w && w.cover_url ? `<div class="attached-file" id="attached-file"><img src="${esc(w.cover_url)}" alt="Текущая обложка"><span>Обложка прикреплена</span><button type="button" class="linkbtn" onclick="A.removeCover()">Удалить файл</button></div>` : ''}
-          <div class="hint" id="cover-removed" hidden>Файл будет удалён после сохранения.</div></div>
+        <div class="field"><label for="cv">Изображения</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="A.showSelectedFiles(this)"><div class="hint">До 8 изображений, JPG, PNG или WebP. Не более 50 МБ на файл.</div><div id="selected-file" class="attached-file"></div>
+          ${w && (w.attachments || []).some((x) => x.type === 'image') ? `<div class="existing-media"><span>В работе уже есть изображения — они сохранятся.</span></div>` : w && w.cover_url ? '<div class="existing-media">Текущая обложка сохранится.</div>' : ''}
+        </div>
+        <div class="field"><label for="af">Музыка или аудио</label><input id="af" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/webm,audio/flac" onchange="A.showSelectedAudio(this)"><div class="hint">Один аудиофайл до 50 МБ. Читатели смогут слушать его прямо на странице работы.</div><div id="selected-audio" class="attached-file"></div>
+          ${w && (w.attachments || []).some((x) => x.type === 'audio') ? '<div class="existing-media">Текущая аудиозапись сохранится. Новая заменит её.</div>' : ''}
+        </div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
         <div class="err" id="er"></div><button class="btn p" id="go" onclick="A.submit()">Отправить на модерацию</button></section>
       <aside class="b ink s5"><div class="label">Что дальше</div><h2 style="font-size:26px;margin-bottom:12px">Редактор прочитает работу</h2>
@@ -286,7 +299,7 @@
       body = queue.length ? queue.map((w) => `<section class="b review s12"><div class="meta">${esc(w.form)}, ${esc(w.uni || '')}</div>
         <div style="font:22px Lora,serif">${esc(w.title)}</div><div class="meta">Автор: <a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a> · ${esc(w.uni || 'вуз не указан')}</div>
         <div class="body">${esc(w.body.slice(0, 1200))}</div>${w.description ? `<div class="meta">Описание автора: ${esc(w.description)}</div>` : ''}
-        ${w.cover_url ? `<div class="review-files"><div class="label">Прикреплённые файлы</div><a href="${esc(w.cover_url)}" target="_blank" rel="noopener noreferrer" class="review-file"><img src="${esc(w.cover_url)}" alt="Прикреплённая обложка"><span>Открыть оригинал ↗</span></a></div>` : '<div class="hint">Файлы к работе не прикреплены.</div>'}
+        ${workMedia(w) ? `<div class="review-files"><div class="label">Вложения автора</div>${workMedia(w)}</div>` : w.cover_url ? `<div class="review-files">${cover(w)}</div>` : '<div class="hint">Вложения не прикреплены.</div>'}
         <div style="margin:14px 0"><label class="radio"><input type="checkbox">Соответствует правилам</label><label class="radio"><input type="checkbox">Нет плагиата</label><label class="radio"><input type="checkbox">Нет оскорблений и запрещённого контента</label></div>
         <textarea id="nt-${esc(w.id)}" rows="2" placeholder="Комментарий автору (обязателен при возврате и отклонении)"></textarea>
         <div class="row" style="margin-top:12px"><button class="btn p" onclick="A.modAct('${esc(w.id)}','published')">Опубликовать</button><button class="btn" onclick="A.modAct('${esc(w.id)}','fix')">Вернуть на доработку</button><button class="btn" onclick="A.modAct('${esc(w.id)}','rejected')">Отклонить</button></div></section>`).join('')
@@ -486,11 +499,15 @@
   A.edit = (id) => { S.editId = id; go('publish'); };
   A.submit = async () => {
     const er = $('#er'), title = val('pt'), body = val('pb');
-    const file = $('#cv').files[0];
+    const files = Array.from($('#cv').files || []);
+    const audio = ($('#af') && $('#af').files[0]) || null;
+    const allowedAudio = ['audio/mpeg','audio/mp3','audio/mp4','audio/aac','audio/ogg','audio/wav','audio/webm','audio/flac','audio/x-wav'];
     const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
       : !body ? 'Добавьте текст или подпись к работе' : body.length > 50000 ? 'Текст должен быть не длиннее 50 000 символов'
-      : file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'Обложка должна быть в формате JPG, PNG или WebP'
-      : file && file.size > 50 * 1024 * 1024 ? 'Файл больше 50 МБ'
+      : files.length > 8 ? 'Можно прикрепить не больше 8 изображений'
+      : files.some((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) ? 'Изображения должны быть в формате JPG, PNG или WebP'
+      : files.some((file) => file.size > 50 * 1024 * 1024) ? 'Каждое изображение должно быть не больше 50 МБ'
+      : audio && (!allowedAudio.includes(audio.type) || audio.size > 50 * 1024 * 1024) ? 'Аудио: MP3, M4A, AAC, OGG, WAV, WebM или FLAC до 50 МБ'
       : val('ptags').split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean).length > 5 ? 'Укажите не больше 5 тегов'
       : val('ptags').split(',').some((t) => t.trim().replace(/^#/, '').length > 24) ? 'Каждый тег должен быть не длиннее 24 символов'
       : !$('#pa').checked ? 'Подтвердите авторство' : '';
@@ -500,7 +517,7 @@
     if (knownTags.size + tags.filter((tag) => !knownTags.has(tag)).length > 30) { er.textContent = 'Достигнут лимит в 30 разных тегов. Выберите существующие.'; return; }
     $('#go').disabled = true;
     try {
-      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags }, file, S.me.id, !!(document.querySelector('#cv[data-remove-cover="true"]')));
+      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags }, files, audio, S.me.id);
       S.editId = null; toast('Отправлено на модерацию'); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
@@ -508,9 +525,8 @@
   A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
   A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
 
-  A.showSelectedFile = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span>' + esc(input.files[0].name) + '</span><button type="button" class="linkbtn" onclick="A.clearSelectedFile()">Убрать файл</button>' : ''; };
-  A.clearSelectedFile = () => { const input = $('#cv'); if (input) { input.value = ''; input.dataset.removeCover = 'true'; } const box = $('#selected-file'); if (box) box.innerHTML = ''; const note = $('#cover-removed'); if (note) note.hidden = false; };
-  A.removeCover = () => { const input = $('#cv'); if (input) input.dataset.removeCover = 'true'; const current = $('#attached-file'); if (current) current.remove(); const note = $('#cover-removed'); if (note) note.hidden = false; };
+  A.showSelectedFiles = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = Array.from(input.files || []).map((file) => '<span>' + esc(file.name) + ' · ' + (file.size / 1048576).toFixed(1) + ' МБ</span>').join(''); };
+  A.showSelectedAudio = (input) => { const box = $('#selected-audio'); if (!box) return; box.textContent = input.files && input.files[0] ? input.files[0].name + ' · ' + (input.files[0].size / 1048576).toFixed(1) + ' МБ' : ''; };
   A.react = async (id, kind) => {
     if (!S.me) return toast('Войдите, чтобы оставить реакцию');
     try {
