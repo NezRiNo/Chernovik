@@ -9,8 +9,8 @@
   const isLive = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
   const sb = isLive ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
 
-  const KINDS = ['like', 'hit', 'more'];
-  const countKinds = (rows = []) => rows.reduce((a, r) => ((a[r.kind] = (a[r.kind] || 0) + 1), a), { like: 0, hit: 0, more: 0 });
+  const KINDS = ['like'];
+  const countKinds = (rows = []) => rows.reduce((a, r) => ((a[r.kind] = (a[r.kind] || 0) + 1), a), { like: 0 });
   const RU = {
     'Invalid login credentials': 'Неверный ник или пароль',
     'User already registered': 'Этот ник уже занят',
@@ -145,14 +145,31 @@
     },
     async incViews(id) { await sb.rpc('increment_views', { work_id: id }); },
 
-    async listComments(workId) {
+    async listComments(workId, uid) {
       const { data, error } = await sb.from('comments').select('*, author:profiles(nick, avatar)')
         .eq('work_id', workId).eq('hidden', false).order('created_at');
       check(error);
-      return data;
+      const ids = (data || []).map((c) => c.id);
+      if (!ids.length) return [];
+      const { data: likes, error: likesError } = await sb.from('comment_reactions').select('comment_id, user_id').in('comment_id', ids);
+      check(likesError);
+      const byComment = {};
+      (likes || []).forEach((r) => {
+        byComment[r.comment_id] = byComment[r.comment_id] || { count: 0, mine: false };
+        byComment[r.comment_id].count++;
+        if (r.user_id === uid) byComment[r.comment_id].mine = true;
+      });
+      return data.map((c) => ({ ...c, like_count: (byComment[c.id] || {}).count || 0, liked_by_me: !!(byComment[c.id] || {}).mine }));
     },
-    async addComment(workId, body, uid) {
-      const { error } = await sb.from('comments').insert({ work_id: workId, author_id: uid, body });
+    async addComment(workId, body, uid, parentId = null) {
+      const { error } = await sb.from('comments').insert({ work_id: workId, author_id: uid, body, parent_id: parentId });
+      check(error);
+    },
+    async toggleCommentLike(commentId, uid, on) {
+      const q = sb.from('comment_reactions');
+      const { error } = on
+        ? await q.delete().match({ comment_id: commentId, user_id: uid })
+        : await q.insert({ comment_id: commentId, user_id: uid });
       check(error);
     },
     async reactions(workId, uid) {
@@ -227,6 +244,7 @@
       { id: 'c2', work_id: 'w1', author_id: 'ed', body: 'Зацепило. Особенно финал.', hidden: false, created_at: Date.now() - day / 2 },
     ],
     reactions: [],
+    commentReactions: [],
     follows: [],
     reports: [{ id: 'r1', reporter_id: 'u1', target_type: 'comment', target_id: 'c2', reason: 'Другое', note: 'Пример жалобы для демонстрации', status: 'new', created_at: Date.now() - 3600e3 }],
   });
@@ -259,6 +277,7 @@
     async deleteAccount(id) {
       DB.works = DB.works.filter((w) => w.author_id !== id);
       DB.comments = DB.comments.filter((c) => c.author_id !== id);
+      DB.commentReactions = (DB.commentReactions || []).filter((r) => r.user_id !== id && !DB.comments.some((c) => c.id === r.comment_id));
       DB.reactions = DB.reactions.filter((r) => r.user_id !== id);
       DB.reports = DB.reports.filter((r) => r.reporter_id !== id);
       DB.follows = (DB.follows || []).filter((f) => f.follower_id !== id && f.author_id !== id);
@@ -335,15 +354,25 @@
     },
     async incViews(id) { const w = DB.works.find((x) => x.id === id); if (w && w.status === 'published') { w.views++; save(); } },
 
-    async listComments(workId) {
+    async listComments(workId, uidMe) {
       return DB.comments.filter((c) => c.work_id === workId && !c.hidden)
-        .map((c) => ({ ...c, created_at: new Date(c.created_at).toISOString(), author: { nick: user(c.author_id).nick, avatar: user(c.author_id).avatar } }));
+        .map((c) => {
+          const likes = (DB.commentReactions || []).filter((r) => r.comment_id === c.id);
+          const author = user(c.author_id) || {};
+          return { ...c, parent_id: c.parent_id || null, like_count: likes.length, liked_by_me: likes.some((r) => r.user_id === uidMe), created_at: new Date(c.created_at).toISOString(), author: { nick: author.nick || 'автор', avatar: author.avatar } };
+        });
     },
-    async addComment(workId, body, uidMe) {
-      DB.comments.push({ id: uid(), work_id: workId, author_id: uidMe, body, hidden: false, created_at: Date.now() }); save();
+    async addComment(workId, body, uidMe, parentId = null) {
+      DB.comments.push({ id: uid(), work_id: workId, author_id: uidMe, body, parent_id: parentId, hidden: false, created_at: Date.now() }); save();
+    },
+    async toggleCommentLike(commentId, uidMe, on) {
+      DB.commentReactions = DB.commentReactions || [];
+      DB.commentReactions = DB.commentReactions.filter((r) => !(r.comment_id === commentId && r.user_id === uidMe));
+      if (!on) DB.commentReactions.push({ comment_id: commentId, user_id: uidMe });
+      save();
     },
     async reactions(workId, uidMe) {
-      const rows = DB.reactions.filter((r) => r.work_id === workId);
+      const rows = DB.reactions.filter((r) => r.work_id === workId && r.kind === 'like');
       const w = DB.works.find((x) => x.id === workId);
       const counts = countKinds(rows);
       KINDS.forEach((k) => { counts[k] += ((w && w.base) || {})[k] || 0; });
