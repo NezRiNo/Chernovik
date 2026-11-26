@@ -188,7 +188,7 @@
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
       ${pubd ? `<div class="reactions">${rb}</div>
       <h2 style="font-size:26px;margin-bottom:12px">Комментарии</h2>
-      <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><span class="hint">До 2 000 символов · комментарии только для вошедших пользователей</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
+      <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><button type="button" class="emoji-toggle" onclick="A.toggleEmoji()" ${S.me ? '' : 'disabled'}>☺ Смайлики</button><div class="emoji-picker" id="emoji-picker" hidden>${['😀','🙂','😊','😍','🥹','😂','🤍','❤️','✨','👏','🔥','🌿','🌸','☀️','🎨','📚','🫶'].map((e) => `<button type="button" onclick="A.insertEmoji('${e}')">${e}</button>`).join('')}</div><span class="hint">До 2 000 символов</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
       ${cm.map((c) => `<div class="comment">${avatar(avOf(c.author), 32)}<div><b>${esc((c.author || {}).nick || 'автор')}</b><p>${esc(c.body)}</p><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div></div>`).join('')}` : ''}
     </article>`;
   };
@@ -490,6 +490,9 @@
       S.editId = null; toast('Отправлено на модерацию'); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
+
+  A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
+  A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
 
   A.react = async (id, kind) => {
     if (!S.me) return toast('Войдите, чтобы оставить реакцию');
