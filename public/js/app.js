@@ -81,7 +81,7 @@
   const fail = (e) => toast(e.message || 'Что-то пошло не так. Попробуйте ещё раз');
   const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   const paragraphs = (t) => String(t || '').split(/\n{2,}/).map((part) => {
-    const p = esc(part).replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>').replace(/_(.+?)_/g, '<em>$1</em>');
+    const p = esc(part).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/_(.+?)_/g, '<em>$1</em>');
     if (/^## .+/.test(p)) return `<h2>${p.slice(3)}</h2>`;
     if (/^&gt; /.test(p)) return `<blockquote>${p.slice(5)}</blockquote>`;
     if (/^(?:[-*] .+(?:\n|$))+/.test(p)) return `<ul>${p.split('\n').filter(Boolean).map((line) => `<li>${line.slice(2)}</li>`).join('')}</ul>`;
