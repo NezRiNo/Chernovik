@@ -18,13 +18,14 @@
     fix: ['Нужны правки', 'acc'],
     rejected: ['Отклонено', 'acc'],
   };
-  const BAD_WORDS = /(дурак|идиот|тупо|ненавижу)/i; // клиентская автопроверка; серьёзную фильтрацию делайте на сервере
 
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { me: null, form: '', uni: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null };
+  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null };
   const A = (window.A = {});
-  const isEditor = () => !!(S.me && S.me.role === 'editor');
+  const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
+  const isAdmin = () => !!(S.me && S.me.role === 'admin');
+  const roleLabel = (role) => ({ author: 'Автор', reviewer: 'Проверщик', editor: 'Проверщик', admin: 'Администратор' }[role] || 'Автор');
   const isDemo = () => DB.mode === 'demo';
 
   const CFG = window.APP_CONFIG || {};
@@ -96,8 +97,10 @@
   }
 
   /* ---------- Общие куски разметки ---------- */
+  const tagsOf = (tags = []) => (Array.isArray(tags) ? tags : []).slice(0, 5).map((t) => `<span class="chip tag">${esc(t)}</span>`).join('');
   const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
       <span class="meta">${esc(w.form)}</span><h3>${esc(w.title)}</h3>
+      ${w.tags && w.tags.length ? `<span class="tags">${tagsOf(w.tags)}</span>` : ''}
       <span class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
       <span class="rx"><span title="Понравилось">${ic('heart', 'sm')}${w.counts.like}</span><span title="Зацепило">${ic('spark', 'sm')}${w.counts.hit}</span><span title="Хочу ещё">${ic('pen', 'sm')}${w.counts.more}</span></span></span></a>`;
   const empty = (title, text, btn, span = 's12') => `<div class="b empty ${span}"><b>${title}</b><p>${text}</p>${btn ? `<div style="margin-top:18px">${btn}</div>` : ''}</div>`;
@@ -111,12 +114,12 @@
   function shell(active, html) {
     // [ключ, подпись в меню, подпись на телефоне, значок]
     const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
-    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
-    const side = [...base, ...(isEditor() || isDemo() ? [mod] : []), about];
-    const tab = [...base, isEditor() ? mod : about];
+    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], admin = ['admin', 'Команда', 'Команда', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
+    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin] : []), about];
+    const tab = [...base, canReview() ? mod : about, ...(isAdmin() ? [admin] : [])];
     const cur = active === 'work' ? 'catalog' : active;
     const me = S.me
-      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${isEditor() ? 'Редактор' : esc(S.me.uni || 'Автор')}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
+      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
       : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
     return `<div class="shell"><aside class="side"><a class="brand" href="#home">Черновик<small>Веб-журнал студентов Новосибирска</small></a>
       <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
@@ -158,16 +161,19 @@
   };
 
   V.catalog = async () => {
-    const ws = await DB.listWorks({ status: 'published', form: S.form || undefined, uni: S.uni || undefined });
+    const all = await DB.listWorks({ status: 'published' });
+    const ws = all.filter((w) => (!S.form || w.form === S.form) && (!S.uni || w.uni === S.uni) && (!S.tag || (w.tags || []).includes(S.tag)));
+    const tags = [...new Set(all.flatMap((w) => w.tags || []))].sort((a, b) => a.localeCompare(b, 'ru'));
     return `<h1 class="page-title">Каталог</h1>
-      <div class="row" style="margin-bottom:22px">${['', ...FORMS].map((f) => `<button class="chip${S.form === f ? ' on' : ''}" onclick="A.setForm('${f}')">${f || 'Все'}</button>`).join('')}
+      <div class="row" style="margin-bottom:12px;flex-wrap:wrap">${['', ...FORMS].map((f) => `<button class="chip${S.form === f ? ' on' : ''}" onclick="A.setForm('${f}')">${f || 'Все формы'}</button>`).join('')}
       <select style="width:auto;margin-left:auto" aria-label="Вуз" onchange="A.setUni(this.value)">${options(UNIS, S.uni, 'Любой вуз')}</select></div>
-      <div class="bento">${ws.length ? ws.map(card).join('') : empty('Ничего не найдено', 'Попробуйте другой фильтр или опубликуйте свою работу в этой категории.', '<a class="btn p" href="#publish">Опубликовать работу</a>')}</div>`;
+      ${tags.length ? `<div class="row" style="margin-bottom:22px;flex-wrap:wrap"><span class="meta">Теги:</span><button class="chip${!S.tag ? ' on' : ''}" onclick="A.setTag('')">Все</button>${tags.map((t) => `<button class="chip${S.tag === t ? ' on' : ''}" onclick="A.setTag('${esc(t)}')">${esc(t)}</button>`).join('')}</div>` : ''}
+      <div class="bento">${ws.length ? ws.map(card).join('') : empty('Ничего не найдено', 'Измените фильтры или опубликуйте работу в этой категории.', '<a class="btn p" href="#publish">Опубликовать работу</a>')}</div>`;
   };
 
   V.work = async (id) => {
     const w = await DB.getWork(id);
-    const allowed = w && (w.status === 'published' || (S.me && (S.me.id === w.author_id || isEditor())));
+    const allowed = w && (w.status === 'published' || (S.me && (S.me.id === w.author_id || canReview())));
     if (!allowed) return `<div class="b empty"><b>Работа не найдена</b>Возможно, она ещё на проверке или была удалена.<div style="margin-top:16px"><a class="btn" href="#catalog">В каталог</a></div></div>`;
     if (w.status === 'published' && !S.seen[id]) { S.seen[id] = 1; DB.incViews(id); }
     const [rx, cm] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id)]);
@@ -177,14 +183,14 @@
     return `<article class="article"><a class="back" href="#catalog">${ic('back', 'sm')}Назад в каталог</a>
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
+      ${w.tags && w.tags.length ? `<div class="tags" style="margin-bottom:12px">${w.tags.map((t) => `<button class="chip tag" onclick="A.setTag('${esc(t)}');go('catalog')">${esc(t)}</button>`).join('')}</div>` : ''}
       <div class="byline">${avatar(avOf(w.author), 36)}<div class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
       ${cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
       ${pubd ? `<div class="reactions">${rb}</div>
       <h2 style="font-size:26px;margin-bottom:12px">Комментарии</h2>
-      <div class="row" style="flex-wrap:nowrap"><input id="ci" aria-label="Комментарий" placeholder="${S.me ? 'Написать комментарий' : 'Войдите, чтобы комментировать'}"><button class="btn p" onclick="A.comment('${esc(id)}')">Отправить</button></div>
-      <p class="hint">Комментарии проходят автопроверку. Анонимных комментариев нет.</p>
+      <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><span class="hint">До 2 000 символов · комментарии только для вошедших пользователей</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
       ${cm.map((c) => `<div class="comment">${avatar(avOf(c.author), 32)}<div><b>${esc((c.author || {}).nick || 'автор')}</b><p>${esc(c.body)}</p><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div></div>`).join('')}` : ''}
     </article>`;
   };
@@ -210,7 +216,7 @@
       <div class="field"><label for="lp">Пароль</label><input id="lp" type="password" autocomplete="current-password"></div>
       <div class="err" id="er"></div><button class="btn p" onclick="A.login()">Войти</button>
       <p class="hint" style="margin-top:14px">Нет аккаунта? <a href="#register" style="text-decoration:underline">Зарегистрироваться</a></p>
-      ${isDemo() ? '<p class="hint">Демо-аккаунты: mila_writes или redaktor, пароль demo1234</p>' : ''}</div></div>`;
+      ${isDemo() ? '<p class="hint">Демо-аккаунты: mila_writes, redaktor или admin_demo; пароль demo1234</p>' : ''}</div></div>`;
   };
 
   V.profile = async () => {
@@ -246,8 +252,9 @@
       <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
         <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
-        <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
+        <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
+        <div class="field"><label for="ptags">Теги (до 5)</label><input id="ptags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="например: город, студенческая жизнь, осень"><div class="hint">Разделяйте запятыми. Каждый тег — до 24 символов.</div></div>
         <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 2 МБ. Без обложки подставим рисунок по умолчанию.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
         <div class="err" id="er"></div><button class="btn p" id="go" onclick="A.submit()">Отправить на модерацию</button></section>
@@ -257,9 +264,9 @@
   };
 
   V.mod = async () => {
-    if (!isEditor()) {
-      return `<div class="form-wrap"><h1 class="page-title">Редакция</h1><div class="b"><p>Этот раздел доступен только редакторам журнала.</p>
-        ${isDemo() ? '<button class="btn p" onclick="A.demoEditor()">Войти редактором (демо)</button>' : '<p class="hint">Роль редактора выдаёт администратор проекта.</p>'}</div></div>`;
+    if (!canReview()) {
+      return `<div class="form-wrap"><h1 class="page-title">Редакция</h1><div class="b"><p>Этот раздел доступен только проверщикам и администраторам.</p>
+        ${isDemo() ? '<button class="btn p" onclick="A.demoEditor()">Войти проверщиком (демо)</button>' : '<p class="hint">Роль проверщика выдаёт администратор проекта.</p>'}</div></div>`;
     }
     const queue = await DB.listWorks({ status: 'review' });
     S.reports = await DB.listReports();
@@ -282,6 +289,19 @@
         : empty('Новых жалоб нет', 'Когда читатели пожалуются на работу или комментарий, они появятся здесь.');
     }
     return `<h1 class="page-title">Модерация</h1><div class="row" style="margin-bottom:20px">${tabs}</div><div class="bento">${body}</div>`;
+  };
+
+  V.admin = async () => {
+    if (!isAdmin()) return `<div class="form-wrap"><h1 class="page-title">Команда</h1><div class="b"><p>Раздел доступен только администраторам.</p></div></div>`;
+    const people = await DB.listProfiles();
+    const labels = { author: 'Автор', reviewer: 'Проверщик', admin: 'Администратор', editor: 'Проверщик (старая роль)' };
+    const roles = ['author', 'reviewer', 'admin'];
+    return `<div class="form-wrap"><h1 class="page-title">Команда и роли</h1>
+      <p class="lead">Назначайте проверщиков и администраторов только тем, кому доверяете доступ к материалам и управлению сайтом.</p>
+      <div class="b review s12">${people.map((p) => `<section class="team-row"><div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${esc(labels[p.role] || p.role)}</div></div>
+        <div class="row"><select id="role-${esc(p.id)}" aria-label="Роль пользователя ${esc(p.nick)}">${roles.map((r) => `<option value="${r}"${r === p.role ? ' selected' : ''}>${labels[r]}</option>`).join('')}</select>
+        <button class="btn sm" onclick="A.setRole('${esc(p.id)}')">Сохранить</button></div></section>`).join('')}</div>
+      <p class="hint">Не меняйте собственную роль. Для первого администратора используйте одноразовую SQL-команду из инструкции по настройке Supabase.</p></div>`;
   };
 
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
@@ -343,7 +363,8 @@
   A.go = go;
   A.setForm = (f) => { S.form = f; render(); };
   A.setUni = (u) => { S.uni = u; render(); };
-  A.byUni = (u) => { S.uni = u; S.form = ''; go('catalog'); };
+  A.setTag = (tag) => { S.tag = tag; render(); };
+  A.byUni = (u) => { S.uni = u; S.form = ''; S.tag = ''; go('catalog'); };
   A.tab = (t) => { S.tab = t; render(); };
 
   A.reg = async () => {
@@ -362,7 +383,8 @@
     try { S.me = await DB.signIn({ nick: val('lm'), password: $('#lp').value }); toast('Вы вошли'); go('profile'); }
     catch (e) { $('#er').textContent = e.message; }
   };
-  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор'); render(); };
+  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как проверщик (демо)'); render(); };
+  A.setRole = async (id) => { const select = $('#role-' + id); if (!select) return; try { await DB.setProfileRole(id, select.value); toast('Роль обновлена'); render(); } catch (e) { fail(e); } };
   A.logout = async () => { await DB.signOut(); S.me = null; toast('Вы вышли'); go('home'); };
   A.saveProfile = async () => {
     const patch = { avatar: pickedAv(), bio: val('bio'), uni: val('un') || null, socials: { vk: val('vk'), telegram: val('tg'), behance: val('bh') } };
@@ -376,13 +398,17 @@
   A.submit = async () => {
     const er = $('#er'), title = val('pt'), body = val('pb');
     const file = $('#cv').files[0];
-    const bad = !title ? 'Добавьте название' : !body ? 'Добавьте текст или подпись к работе'
+    const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
+      : !body ? 'Добавьте текст или подпись к работе' : body.length > 50000 ? 'Текст должен быть не длиннее 50 000 символов'
+      : file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'Обложка должна быть в формате JPG, PNG или WebP'
       : file && file.size > 2 * 1024 * 1024 ? 'Обложка больше 2 МБ'
+      : val('ptags').split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean).length > 5 ? 'Укажите не больше 5 тегов'
+      : val('ptags').split(',').some((t) => t.trim().replace(/^#/, '').length > 24) ? 'Каждый тег должен быть не длиннее 24 символов'
       : !$('#pa').checked ? 'Подтвердите авторство' : '';
     if (bad) { er.textContent = bad; return; }
     $('#go').disabled = true;
     try {
-      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd') }, file, S.me.id);
+      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags: [...new Set(val('ptags').split(',').map((t) => t.trim().replace(/^#/, '').toLowerCase()).filter(Boolean))] }, file, S.me.id);
       S.editId = null; toast('Отправлено на модерацию'); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
@@ -396,11 +422,13 @@
     } catch (e) { fail(e); }
   };
   A.comment = async (id) => {
-    const t = val('ci');
+    const t = val('ci').trim();
     if (!S.me) return toast('Войдите, чтобы комментировать');
-    if (!t) return;
-    if (BAD_WORDS.test(t)) return toast('Комментарий не прошёл автопроверку. Переформулируйте, пожалуйста');
-    try { await DB.addComment(id, t, S.me.id); render(); } catch (e) { fail(e); }
+    if (!t) return toast('Напишите комментарий');
+    if (t.length > 2000) return toast('Комментарий должен быть не длиннее 2 000 символов');
+    const button = document.querySelector('.comment-form button[type="submit"]');
+    if (button) button.disabled = true;
+    try { await DB.addComment(id, t, S.me.id); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
   };
 
   A.report = (type, id) => {
