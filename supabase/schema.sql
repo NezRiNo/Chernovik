@@ -54,7 +54,7 @@ create index comments_parent_idx on public.comments (parent_id, created_at);
 create table public.reactions (
   work_id uuid not null references public.works(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
-  kind    text not null check (kind in ('like', 'hit', 'more')),
+  kind    text not null check (kind = 'like'),
   primary key (work_id, user_id, kind)
 );
 
