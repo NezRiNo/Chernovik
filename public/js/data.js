@@ -271,13 +271,13 @@
     async getWork(id) { const w = DB.works.find((x) => x.id === id); return w ? this._work(w) : null; },
     async saveWork(w, files, audio, uidMe) {
       const toDataUrl = (file) => new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
-      const attachments = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type !== 'audio') : [];
+      const attachments = Array.isArray(w.attachments) ? (audio ? w.attachments.filter((x) => x.type !== 'audio') : [...w.attachments]) : [];
+      const totalSize = (files || []).reduce((sum, file) => sum + file.size, 0) + (audio ? audio.size : 0);
+      if (totalSize > 3 * 1024 * 1024) throw new Error('В демо-режиме общий размер новых вложений не должен превышать 3 МБ. Для больших файлов подключите Supabase.');
       for (const file of (files || [])) {
-        if (file.size > 2 * 1024 * 1024) throw new Error('В демо-режиме файл должен быть не больше 2 МБ. Для больших файлов подключите Supabase.');
         attachments.push({ type: 'image', url: await toDataUrl(file), name: file.name, mime_type: file.type });
       }
       if (audio) {
-        if (audio.size > 2 * 1024 * 1024) throw new Error('В демо-режиме аудио должно быть не больше 2 МБ. Для больших файлов подключите Supabase.');
         attachments.push({ type: 'audio', url: await toDataUrl(audio), name: audio.name, mime_type: audio.type });
       }
       const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [], attachments };
