@@ -155,7 +155,7 @@
       return `<a class="home-post" href="#work-${esc(w.id)}">
         <span class="home-post-thumb">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
         <span class="home-post-copy"><span class="home-post-type">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="home-post-author">${esc(w.author.nick || 'Автор')} · ${esc(w.uni || 'вуз не указан')}</span></span>
-        <span class="home-post-stats"><span>${ic('eye','sm')}${Number(w.views || 0)}</span><span>${ic('heart','sm')}${w.counts.like + w.counts.hit + w.counts.more}</span></span>
+        <span class="home-post-stats"><span>${ic('eye','sm')}${Number(w.views || 0)}</span><span>${ic('heart','sm')}${Number(w.counts && w.counts.like) || 0}</span></span>
         <span class="home-post-arrow" aria-hidden="true">↗</span>
       </a>`;
     }).join('') : `<div class="home-list-empty"><b>Здесь начинается журнал</b><p>Опубликуйте первую работу — и она появится в этой ленте.</p><a class="btn p" href="#publish">Опубликовать работу</a></div>`;
@@ -206,7 +206,7 @@
           <b>${esc((c.author || {}).nick || 'автор')}</b>
           <p>${esc(c.body)}</p>
           <div class="comment-tools">
-            <button class="comment-like${c.liked_by_me ? ' on' : ''}" aria-label="Нравится" title="Нравится" onclick="A.commentLike('${esc(c.id)}',${!!c.liked_by_me})">${ic('heart', 'sm')}<span>${c.like_count || 0}</span></button>
+            <button class="comment-like${c.liked_by_me ? ' on' : ''}" aria-label="Нравится" title="Нравится" onclick="A.commentLike('${esc(c.id)}',${!!c.liked_by_me})">${ic('heart', 'sm')}<span>${Number(c.like_count) || 0}</span></button>
             ${!isReply ? `<button class="linkbtn" onclick="A.toggleReply('${esc(c.id)}')">Ответить</button>` : ''}
             <button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button>
           </div>
@@ -259,7 +259,7 @@
     if (!S.me) { location.hash = 'login'; return ''; }
     const ws = await DB.listWorks({ authorId: S.me.id });
     const views = ws.reduce((a, w) => a + (w.views || 0), 0);
-    const reacts = ws.reduce((a, w) => a + w.counts.like + w.counts.hit + w.counts.more, 0);
+    const reacts = ws.reduce((a, w) => a + (Number(w.counts && w.counts.like) || 0), 0);
     const soc = S.me.socials || {};
     const following = await DB.listFollowing(S.me.id);
     return `<div class="bento">
