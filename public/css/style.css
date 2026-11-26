@@ -364,3 +364,5 @@ a.admin-stat:hover { border-color:var(--ink); }
 .site-field textarea { resize:vertical; min-height:76px; }
 .site-announcement h2 { margin:6px 0; font:24px/1.25 Lora,Georgia,serif; }
 .settings-card .btn { margin-top:8px; }
+
+@media(max-width:640px) { .account-actions .btn:first-child { display:none; } .manage-content > h1.page-title { display:none; } }
