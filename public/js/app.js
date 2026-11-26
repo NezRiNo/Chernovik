@@ -122,7 +122,7 @@
     const me = S.me
       ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
       : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
-    return `<div class="shell"><aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>Черновик<small>Веб-журнал студентов Новосибирска</small></span></a>
+    return `<div class="shell"><aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
       <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
       <div class="side-foot">${me}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</div></aside>
       <main class="main"><div class="page">${html}</div>${footer()}</main>
@@ -141,12 +141,12 @@
       ? `<a class="b tight s8 big-work" href="#work-${esc(f.id)}">${cover(f)}<span class="txt"><span class="meta">Новое в журнале, ${esc(f.form.toLowerCase())}</span><h3>${esc(f.title)}</h3><span class="meta">${esc(f.author.nick || '')}, ${esc(f.uni || '')}</span><span class="excerpt">${esc(f.body)}</span></span></a>`
       : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>', 's8');
     return `<div class="bento">
-      <section class="b hero s8"><div class="label">Веб-журнал студентов Новосибирска</div>
-        <h1>Здесь студенты публикуют то, что пишут, рисуют и снимают</h1>
-        <p class="lead">Редактор читает каждую работу. Авторы получают читателей, а не лайки.</p>
+      <section class="b hero s8"><div class="label">${esc((S.site || {}).home_label || "Веб-журнал студентов Новосибирска")}</div>
+        <h1>${esc((S.site || {}).home_heading || "Здесь студенты публикуют то, что пишут, рисуют и снимают")}</h1>
+        <p class="lead">${esc((S.site || {}).home_lead || "Редактор читает каждую работу. Авторы получают читателей, а не лайки.")}</p>
         <div class="row"><a class="btn p big" href="#publish">Опубликовать работу</a><a class="btn big" href="#catalog">Читать журнал</a></div></section>
-      <section class="b acc s4"><div class="label">Тема месяца, ноябрь</div><div class="theme-title">«Первый снег»</div>
-        <p>Тема необязательная: можно участвовать, а можно публиковать своё. Работы принимаем до 30 ноября.</p>
+      <section class="b acc s4"><div class="label">Тема месяца</div><div class="theme-title">«${esc((S.site || {}).theme_title || "Первый снег")}»</div>
+        <p>${esc((S.site || {}).theme_description || "Тема необязательная: можно участвовать, а можно публиковать своё.")} ${(S.site || {}).theme_deadline ? "Работы принимаем до " + esc(S.site.theme_deadline) + "." : ""}</p>
         <a class="btn light" href="#publish">Участвовать</a></section>
       ${feat}
       <section class="b ink s4"><div class="label">Журнал сейчас</div><div class="stats">
@@ -345,7 +345,7 @@
       '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
   };
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
-    <p>«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.</p>
+    <p>${esc((S.site || {}).about_text || "«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.")}</p>
     <p>Каждую работу читает редактор, поэтому здесь нет шума и спама. Читать можно без регистрации, публиковаться и комментировать могут зарегистрированные участники.</p></div>`;
 
   const TERMS = [
