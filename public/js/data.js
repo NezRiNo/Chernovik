@@ -98,7 +98,7 @@
     },
     async saveWork(w, files, audio, uid) {
       const row = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
-      const attachments = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type !== 'audio') : [];
+      const attachments = Array.isArray(w.attachments) ? (audio ? w.attachments.filter((x) => x.type !== 'audio') : [...w.attachments]) : [];
       for (const file of (files || [])) attachments.push({ type: 'image', url: await this._upload(file, uid), name: file.name, mime_type: file.type });
       if (audio) attachments.push({ type: 'audio', url: await this._upload(audio, uid), name: audio.name, mime_type: audio.type });
       row.attachments = attachments;
