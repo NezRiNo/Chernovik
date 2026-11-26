@@ -22,6 +22,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
+  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Здесь студенты публикуют то, что пишут, рисуют и снимают', home_lead: 'Редактор читает каждую работу. Авторы получают читателей, а не лайки.', theme_title: 'Первый снег', theme_description: 'Тема необязательная: можно участвовать, а можно публиковать своё.', theme_deadline: '30 ноября', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
@@ -527,7 +528,8 @@
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
     const t = ++S.tok;
     try {
-      S.site = await DB.getSiteSettings();
+      try { S.site = Object.assign({}, SITE_DEFAULTS, await DB.getSiteSettings()); } catch (settingsError) { S.site = Object.assign({}, SITE_DEFAULTS); }
+      document.title = S.site.site_name || 'Черновик';
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);
