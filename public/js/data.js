@@ -10,7 +10,8 @@
   const sb = isLive ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
 
   const KINDS = ['like'];
-  const countKinds = (rows = []) => rows.reduce((a, r) => ((a[r.kind] = (a[r.kind] || 0) + 1), a), { like: 0 });
+  const safeCount = (value) => { const n = Number(value); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; };
+  const countKinds = (rows = []) => rows.reduce((a, r) => { if (KINDS.includes(r.kind)) a[r.kind] = safeCount(a[r.kind]) + 1; return a; }, { like: 0 });
   const RU = {
     'Invalid login credentials': 'Неверный ник или пароль',
     'User already registered': 'Этот ник уже занят',
@@ -317,7 +318,7 @@
     _work(w) {
       const mine = DB.reactions.filter((r) => r.work_id === w.id);
       const c = countKinds(mine);
-      KINDS.forEach((k) => { c[k] += (w.base || {})[k] || 0; });
+      KINDS.forEach((k) => { c[k] = safeCount(c[k]) + safeCount((w.base || {})[k]); });
       return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), comment_count: DB.comments.filter((x) => x.work_id === w.id && !x.hidden).length, counts: c };
     },
     async listWorks(o = {}) {
@@ -376,7 +377,7 @@
       const rows = DB.reactions.filter((r) => r.work_id === workId && r.kind === 'like');
       const w = DB.works.find((x) => x.id === workId);
       const counts = countKinds(rows);
-      KINDS.forEach((k) => { counts[k] += ((w && w.base) || {})[k] || 0; });
+      KINDS.forEach((k) => { counts[k] = safeCount(counts[k]) + safeCount(((w && w.base) || {})[k]); });
       return { counts, mine: rows.filter((r) => r.user_id === uidMe).map((r) => r.kind) };
     },
     async toggleReaction(workId, kind, uidMe, on) {
