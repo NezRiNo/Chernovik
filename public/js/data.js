@@ -61,7 +61,7 @@
       check(error);
     },
     async listProfiles() {
-      const { data, error } = await sb.from('profiles').select('id, nick, uni, role, created_at').order('created_at');
+      const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, role, created_at').order('created_at');
       check(error);
       return data || [];
     },
@@ -232,7 +232,7 @@
       DB.session = null; save();
     },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
-    async listProfiles() { return DB.users.map(({ id, nick, uni, role, created_at }) => ({ id, nick, uni, role, created_at })); },
+    async listProfiles() { return DB.users.map(({ id, nick, uni, avatar, role, created_at }) => ({ id, nick, uni, avatar, role, created_at })); },
     async setProfileRole(id, role) {
       if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав');
       if (!['author', 'reviewer', 'admin'].includes(role)) throw new Error('Неизвестная роль');
