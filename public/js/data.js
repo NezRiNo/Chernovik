@@ -255,7 +255,7 @@
       const mine = DB.reactions.filter((r) => r.work_id === w.id);
       const c = countKinds(mine);
       KINDS.forEach((k) => { c[k] += (w.base || {})[k] || 0; });
-      return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), counts: c };
+      return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), comment_count: DB.comments.filter((x) => x.work_id === w.id && !x.hidden).length, counts: c };
     },
     async listWorks(o = {}) {
       return DB.works
