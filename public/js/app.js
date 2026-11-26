@@ -149,22 +149,29 @@
     const authors = new Set(ws.map((w) => w.author.id)).size;
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const works = ws.length
-      ? `<section class="home-latest"><div class="home-section-head"><div><span class="eyebrow">Свежие публикации</span><h2>Недавно в журнале</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div><div class="home-work-grid">${ws.slice(0,3).map(card).join('')}</div></section>`
-      : `<section class="home-empty"><div><span class="eyebrow">Первая публикация</span><h2>Начнём эту историю вместе?</h2><p>Поделитесь текстом, иллюстрацией или фотографией — здесь её смогут увидеть первые читатели.</p><a class="btn p" href="#publish">Опубликовать работу</a></div></section>`;
-    return `<div class="home-page home-page-simple">
-      <section class="home-hero">
-        <div class="home-hero-copy">
-          <span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
-          <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
-          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.')}</p>
-          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Открыть журнал ↗</a></div>
-          <div class="home-trust"><span>${ws.length} недавних публикаций</span><i></i><span>${authors} авторов</span></div>
-        </div>
-        <div class="home-hero-art" aria-hidden="true"><div class="art-sheet art-sheet-back"></div><div class="art-sheet art-sheet-front"><span class="art-mark">ч.</span><span class="art-caption">твоя идея<br>может больше</span><span class="art-line"></span></div><span class="art-orbit"></span></div>
+    const posts = ws.length ? ws.map((w) => {
+      const image = safeUrl(w.cover_url);
+      const icon = CARD_ICONS[w.form] || 'pen';
+      return `<a class="home-post" href="#work-${esc(w.id)}">
+        <span class="home-post-thumb">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
+        <span class="home-post-copy"><span class="home-post-type">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="home-post-author">${esc(w.author.nick || 'Автор')} · ${esc(w.uni || 'вуз не указан')}</span></span>
+        <span class="home-post-stats"><span>${ic('eye','sm')}${Number(w.views || 0)}</span><span>${ic('heart','sm')}${w.counts.like + w.counts.hit + w.counts.more}</span></span>
+        <span class="home-post-arrow" aria-hidden="true">↗</span>
+      </a>`;
+    }).join('') : `<div class="home-list-empty"><b>Здесь начинается журнал</b><p>Опубликуйте первую работу — и она появится в этой ленте.</p><a class="btn p" href="#publish">Опубликовать работу</a></div>`;
+    return `<div class="home-page home-redesign">
+      <section class="home-intro">
+        <div><span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
+        <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
+        <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.')}</p></div>
+        <a class="btn p home-intro-cta" href="#publish">${ic('plus')}<span>Новая публикация</span></a>
       </section>
       ${announcement}
-      ${works}
+      <section class="home-feed">
+        <div class="home-feed-head"><div><span class="eyebrow">Свежие публикации</span><h2>В журнале</h2></div><div class="home-feed-count">${ws.length} работ · ${authors} авторов</div><a class="text-link" href="#catalog">Весь журнал ↗</a></div>
+        <div class="home-post-list">${posts}</div>
+      </section>
+      <div class="home-bottom-note"><span>Есть чем поделиться?</span><a href="#publish">Расскажите свою историю ↗</a></div>
     </div>`;
   };
 
