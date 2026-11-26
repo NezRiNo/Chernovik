@@ -2,7 +2,7 @@
 
 **Веб-журнал студенческого творчества Новосибирска.** Публикуйте тексты, стихи, иллюстрации, фотографии и музыку — редакция проверит работу, а читатели смогут её найти, обсудить и поддержать.
 
-[Открыть сайт](https://nezrino.github.io/Chernovik/) · [Сообщить о проблеме](https://github.com/NezRiNo/Chernovik/issues)
+[Репозиторий](https://github.com/NezRiNo/Chernovik) · [Сообщить о проблеме](https://github.com/NezRiNo/Chernovik/issues)
 
 ---
 
