@@ -43,7 +43,7 @@ create policy "comment reactions: insert own" on public.comment_reactions
   );
 drop policy if exists "comment reactions: delete own" on public.comment_reactions;
 create policy "comment reactions: delete own" on public.comment_reactions
-  for delete to authenticated using (user_id = auth.uid());
+  for delete to authenticated using ((select auth.uid()) = user_id);
 
 grant select on public.comment_reactions to anon, authenticated;
 grant insert, delete on public.comment_reactions to authenticated;
