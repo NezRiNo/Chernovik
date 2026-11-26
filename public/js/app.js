@@ -45,6 +45,7 @@
     back: '<path d="M15 6l-6 6 6 6"/>',
     eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
     message: '<path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.6A7 7 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5z"/>',
+    audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
   };
   const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -90,19 +91,9 @@
   const safeUrl = (u) => (typeof u === 'string' && (u.startsWith('https:') || u.startsWith('data:image/') || u.startsWith('data:audio/')) ? u : null);
 
   /* ---------- Иллюстрации-заглушки ---------- */
-  const SCENES = [
-    '<circle cx="170" cy="45" r="24" opacity=".7"/><path d="M0 160L60 90L110 135L170 75L240 160Z" opacity=".5"/><rect x="40" y="105" width="80" height="28"/><circle cx="58" cy="136" r="8"/><circle cx="104" cy="136" r="8"/>',
-    '<path d="M20 160V40h40v30h40v30h40v30h40v30z" opacity=".8"/><circle cx="200" cy="40" r="18" opacity=".5"/>',
-    '<g opacity=".7"><rect x="30" y="20" width="30" height="140"/><rect x="80" y="50" width="30" height="110"/><rect x="130" y="35" width="30" height="125"/><rect x="180" y="70" width="30" height="90"/></g>',
-    '<circle cx="120" cy="80" r="46" opacity=".55"/><circle cx="150" cy="80" r="46" opacity=".35"/>',
-    '<path d="M0 120Q60 60 120 110T240 90V160H0Z" opacity=".6"/><path d="M0 140Q80 100 140 135T240 120V160H0Z" opacity=".8"/>',
-  ];
-  const TINTS = ['#cfc5ac', '#bfb292', '#d8cfb8', '#c8bba0', '#d3c9b2'];
   function cover(w) {
     const u = safeUrl(w.cover_url);
-    if (u) return `<span class="cover"><img src="${esc(u)}" alt="" loading="lazy"></span>`;
-    const i = Math.max(0, FORMS.indexOf(w.form)) % SCENES.length;
-    return `<span class="cover"><svg viewBox="0 0 240 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="240" height="160" fill="${TINTS[i]}"/><g fill="#1b1a17">${SCENES[i]}</g></svg></span>`;
+    return u ? `<span class="cover"><img src="${esc(u)}" alt="" loading="lazy"></span>` : '';
   }
 
   const workMedia = (w) => {
@@ -117,11 +108,16 @@
 
   /* ---------- Общие куски разметки ---------- */
   const tagsOf = (tags = []) => (Array.isArray(tags) ? tags : []).slice(0, 5).map((t) => `<span class="chip tag">${esc(t)}</span>`).join('');
-  const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
+  const CARD_ICONS = { 'Проза': 'pen', 'Стихи': 'spark', 'Иллюстрация': 'grid', 'Фото': 'eye', 'Музыка': 'audio' };
+  const card = (w) => {
+    const hasCover = !!safeUrl(w.cover_url);
+    const mark = `<span class="work-mark" aria-hidden="true">${ic(CARD_ICONS[w.form] || 'pen')}</span>`;
+    return `<a class="b tight work s4${hasCover ? '' : ' no-cover'}" href="#work-${esc(w.id)}">${hasCover ? cover(w) : mark}<span class="txt">
       <span class="meta">${esc(w.form)}</span><h3>${esc(w.title)}</h3>
       ${w.tags && w.tags.length ? `<span class="tags">${tagsOf(w.tags)}</span>` : ''}
       <span class="meta">Автор: ${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
       <span class="rx"><span title="Просмотры">${ic('eye', 'sm')}${Number(w.views || 0)}</span><span title="Комментарии">${ic('message', 'sm')}${Number(w.comment_count || 0)}</span><span title="Реакции">${ic('heart', 'sm')}${w.counts.like + w.counts.hit + w.counts.more}</span></span></span></a>`;
+  };
   const empty = (title, text, btn, span = 's12') => `<div class="b empty ${span}"><b>${title}</b><p>${text}</p>${btn ? `<div style="margin-top:18px">${btn}</div>` : ''}</div>`;
   const options = (list, cur, first) => (first ? `<option value="">${first}</option>` : '') + list.map((x) => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
 
