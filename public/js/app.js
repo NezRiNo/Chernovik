@@ -22,7 +22,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', manageTab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
-  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Здесь студенты публикуют то, что пишут, рисуют и снимают', home_lead: 'Редактор читает каждую работу. Авторы получают читателей, а не лайки.', theme_title: 'Первый снег', theme_description: 'Тема необязательная: можно участвовать, а можно публиковать своё.', theme_deadline: '30 ноября', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.' };
+  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Идеи заслуживают быть увиденными.', home_lead: '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.', theme_title: 'Тема месяца', theme_description: 'Публикуйте то, что хочется показать читателям.', theme_deadline: '', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска.', accent_color: '#e5482d', site_theme: 'system' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
@@ -43,6 +43,8 @@
     spark: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
     pen: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
     back: '<path d="M15 6l-6 6 6 6"/>',
+    eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
+    message: '<path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.6A7 7 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5z"/>',
   };
   const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
@@ -102,8 +104,8 @@
   const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
       <span class="meta">${esc(w.form)}</span><h3>${esc(w.title)}</h3>
       ${w.tags && w.tags.length ? `<span class="tags">${tagsOf(w.tags)}</span>` : ''}
-      <span class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
-      <span class="rx"><span title="Понравилось">${ic('heart', 'sm')}${w.counts.like}</span><span title="Зацепило">${ic('spark', 'sm')}${w.counts.hit}</span><span title="Хочу ещё">${ic('pen', 'sm')}${w.counts.more}</span></span></span></a>`;
+      <span class="meta">Автор: ${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
+      <span class="rx"><span title="Просмотры">${ic('eye', 'sm')}${Number(w.views || 0)}</span><span title="Комментарии">${ic('message', 'sm')}${Number(w.comment_count || 0)}</span><span title="Реакции">${ic('heart', 'sm')}${w.counts.like + w.counts.hit + w.counts.more}</span></span></span></a>`;
   const empty = (title, text, btn, span = 's12') => `<div class="b empty ${span}"><b>${title}</b><p>${text}</p>${btn ? `<div style="margin-top:18px">${btn}</div>` : ''}</div>`;
   const options = (list, cur, first) => (first ? `<option value="">${first}</option>` : '') + list.map((x) => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
 
@@ -131,32 +133,27 @@
   const V = {};
 
   V.home = async () => {
-    const ws = await DB.listWorks({ status: 'published' });
+    const ws = await DB.listWorks({ status: 'published', limit: 6 });
     const authors = new Set(ws.map((w) => w.author.id)).size;
-    const unis = new Set(ws.map((w) => w.uni).filter(Boolean)).size;
-    const featured = ws[0];
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
-      ? `<section class="home-announcement"><span class="eyebrow">Новости проекта</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const featuredBlock = featured
-      ? `<a class="home-feature" href="#work-${esc(featured.id)}">${cover(featured)}<span class="home-feature-copy"><span class="eyebrow">Свежая публикация · ${esc(featured.form.toLowerCase())}</span><h2>${esc(featured.title)}</h2><span class="meta">Автор: ${esc(featured.author.nick || '')} · ${esc(featured.uni || '')}</span><span class="home-feature-link">Читать работу →</span></span></a>`
-      : `<section class="home-feature home-feature-empty"><span class="eyebrow">Первая публикация</span><h2>У журнала пока чистая страница</h2><p>Станьте первым автором — поделитесь текстом, иллюстрацией или фотографией.</p><a class="btn p" href="#publish">Опубликовать работу</a></section>`;
-    return `<div class="home-page">
+      ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
+    const works = ws.length
+      ? `<section class="home-latest"><div class="home-section-head"><div><span class="eyebrow">Свежие публикации</span><h2>Недавно в журнале</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div><div class="home-work-grid">${ws.slice(0,3).map(card).join('')}</div></section>`
+      : `<section class="home-empty"><div><span class="eyebrow">Первая публикация</span><h2>Начнём эту историю вместе?</h2><p>Поделитесь текстом, иллюстрацией или фотографией — здесь её смогут увидеть первые читатели.</p><a class="btn p" href="#publish">Опубликовать работу</a></div></section>`;
+    return `<div class="home-page home-page-simple">
       <section class="home-hero">
-        <div class="home-hero-copy"><span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
+        <div class="home-hero-copy">
+          <span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
           <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
-          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством, найти первых читателей и открыть новые имена.')}</p>
-          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Исследовать журнал <span>↗</span></a></div>
-          <div class="home-trust"><span>${ws.length} публикаций</span><i></i><span>${authors} авторов</span><i></i><span>${unis} вузов</span></div>
+          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.')}</p>
+          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Открыть журнал ↗</a></div>
+          <div class="home-trust"><span>${ws.length} недавних публикаций</span><i></i><span>${authors} авторов</span></div>
         </div>
         <div class="home-hero-art" aria-hidden="true"><div class="art-sheet art-sheet-back"></div><div class="art-sheet art-sheet-front"><span class="art-mark">ч.</span><span class="art-caption">твоя идея<br>может больше</span><span class="art-line"></span></div><span class="art-orbit"></span></div>
       </section>
+      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Тема месяца')}</h2><p>${esc((S.site || {}).theme_description || 'Публикуйте то, что хочется показать читателям.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Участвовать ↗</a></section>
       ${announcement}
-      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Первый снег')}</h2><p>${esc((S.site || {}).theme_description || 'Тема необязательная — публикуйте то, что действительно хочется.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Откликнуться на тему ↗</a></section>
-      <div class="home-section-head"><div><span class="eyebrow">Выбор редакции</span><h2>Истории, которые стоит открыть</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div>
-      ${featuredBlock}
-      ${ws.length > 1 ? `<div class="home-work-grid">${ws.slice(1,7).map(card).join('')}</div>` : ''}
-      <section class="home-how"><div><span class="eyebrow">Начать просто</span><h2>Твой голос —<br>твоя первая публикация.</h2><p>Не нужно ждать идеального момента. «Черновик» создан, чтобы пробовать, делиться и находить своих читателей.</p><a class="btn p" href="#publish">Начать публикацию</a></div><div class="home-steps"><article><b>01</b><div><h3>Поделись</h3><p>Загрузи текст, фото, иллюстрацию или другой творческий материал.</p></div></article><article><b>02</b><div><h3>Получи отклик</h3><p>Редактор поможет подготовить работу к публикации.</p></div></article><article><b>03</b><div><h3>Найди читателей</h3><p>Твою работу увидит сообщество студентов Новосибирска.</p></div></article></div></section>
-      <section class="home-community"><span class="eyebrow">Сообщество «Черновика»</span><h2>У каждого есть что показать.</h2><p>Открой журнал, найди вдохновение или сделай первый шаг как автор.</p><div class="home-actions"><a class="btn p" href="#publish">Опубликовать работу</a><a class="btn" href="#catalog">Перейти в каталог</a></div></section>
+      ${works}
     </div>`;
   };
 
@@ -184,13 +181,14 @@
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
       ${w.tags && w.tags.length ? `<div class="tags" style="margin-bottom:12px">${w.tags.map((t) => `<button class="chip tag" onclick="A.setTag('${esc(t)}');go('catalog')">${esc(t)}</button>`).join('')}</div>` : ''}
-      <div class="byline">${avatar(avOf(w.author), 36)}<div class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
+      <div class="byline"><a href="#author-${esc(w.author_id)}" class="author-link" aria-label="Профиль автора">${avatar(avOf(w.author), 36)}</a><div class="meta"><a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a>, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div></div>
+      ${pubd ? `<div class="article-stats"><span>${ic('eye','sm')}${Number(w.views || 0)} просмотров</span><span>${ic('message','sm')}${cm.length} комментариев</span></div>` : ''}
       ${cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
       <div class="prose${w.form === 'Стихи' ? ' poem' : ''}">${paragraphs(w.body)}</div>
       ${pubd ? `<div class="reactions">${rb}</div>
       <h2 style="font-size:26px;margin-bottom:12px">Комментарии</h2>
-      <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><span class="hint">До 2 000 символов · комментарии только для вошедших пользователей</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
+      <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><button type="button" class="emoji-toggle" onclick="A.toggleEmoji()" ${S.me ? '' : 'disabled'}>☺ Смайлики</button><div class="emoji-picker" id="emoji-picker" hidden>${['😀','🙂','😊','😍','🥹','😂','🤍','❤️','✨','👏','🔥','🌿','🌸','☀️','🎨','📚','🫶'].map((e) => '<button type="button" onclick="A.insertEmoji(\'' + e + '\')">' + e + '</button>').join('')}</div><span class="hint">До 2 000 символов</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
       ${cm.map((c) => `<div class="comment">${avatar(avOf(c.author), 32)}<div><b>${esc((c.author || {}).nick || 'автор')}</b><p>${esc(c.body)}</p><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div></div>`).join('')}` : ''}
     </article>`;
   };
@@ -245,17 +243,28 @@
           ${w.editor_note ? `<div class="note">Редактор: ${esc(w.editor_note)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px 0"><b>Здесь появятся ваши работы</b>Отправьте первую, и редактор её прочитает.</div>'}</section></div>`;
   };
 
+  V.author = async (id) => {
+    const profile = await DB.getPublicProfile(id);
+    if (!profile) return empty('Автор не найден', 'Профиль мог быть удалён.');
+    const works = await DB.listWorks({ authorId: id, status: 'published' });
+    return `<div class="public-profile"><a class="back" href="#catalog">${ic('back','sm')}Назад в журнал</a><div class="profile-head">${avatar(avOf(profile),64)}<div><h1 class="page-title">${esc(profile.nick)}</h1><div class="meta">${esc(profile.uni || '')}</div></div></div>${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}<h2 class="section-heading">Публикации автора</h2><div class="bento">${works.length ? works.map(card).join('') : empty('Пока нет опубликованных работ','Новые публикации появятся здесь.')}</div></div>`;
+  };
+
   V.publish = async () => {
     if (!S.me) { toast('Сначала войдите или зарегистрируйтесь'); location.hash = 'register'; return ''; }
     const w = S.editId ? await DB.getWork(S.editId) : null;
+    const knownWorks = await DB.listWorks();
+    const knownTags = [...new Set(knownWorks.flatMap((x) => x.tags || []))].sort((a,b) => a.localeCompare(b,'ru'));
     return `<h1 class="page-title">${w ? 'Правки к работе' : 'Новая работа'}</h1><div class="bento">
       <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
         <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
-        <div class="field"><label for="ptags">Теги (до 5)</label><input id="ptags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="например: город, студенческая жизнь, осень"><div class="hint">Разделяйте запятыми. Каждый тег — до 24 символов.</div></div>
-        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 2 МБ. Без обложки подставим рисунок по умолчанию.</div></div>
+        <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
+        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" onchange="A.showSelectedFile(this)"><div class="hint">JPG, PNG или WebP до 10 МБ.</div><div id="selected-file" class="attached-file"></div>
+          ${w && w.cover_url ? `<div class="attached-file" id="attached-file"><img src="${esc(w.cover_url)}" alt="Текущая обложка"><span>Обложка прикреплена</span><button type="button" class="linkbtn" onclick="A.removeCover()">Удалить файл</button></div>` : ''}
+          <div class="hint" id="cover-removed" hidden>Файл будет удалён после сохранения.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
         <div class="err" id="er"></div><button class="btn p" id="go" onclick="A.submit()">Отправить на модерацию</button></section>
       <aside class="b ink s5"><div class="label">Что дальше</div><h2 style="font-size:26px;margin-bottom:12px">Редактор прочитает работу</h2>
@@ -275,8 +284,9 @@
     let body;
     if (S.tab === 'queue') {
       body = queue.length ? queue.map((w) => `<section class="b review s12"><div class="meta">${esc(w.form)}, ${esc(w.uni || '')}</div>
-        <div style="font:26px Lora,serif">${esc(w.title)}</div><div class="meta">${esc(w.author.nick || '')}</div>
+        <div style="font:22px Lora,serif">${esc(w.title)}</div><div class="meta">Автор: <a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a> · ${esc(w.uni || 'вуз не указан')}</div>
         <div class="body">${esc(w.body.slice(0, 1200))}</div>${w.description ? `<div class="meta">Описание автора: ${esc(w.description)}</div>` : ''}
+        ${w.cover_url ? `<div class="review-files"><div class="label">Прикреплённые файлы</div><a href="${esc(w.cover_url)}" target="_blank" rel="noopener noreferrer" class="review-file"><img src="${esc(w.cover_url)}" alt="Прикреплённая обложка"><span>Открыть оригинал ↗</span></a></div>` : '<div class="hint">Файлы к работе не прикреплены.</div>'}
         <div style="margin:14px 0"><label class="radio"><input type="checkbox">Соответствует правилам</label><label class="radio"><input type="checkbox">Нет плагиата</label><label class="radio"><input type="checkbox">Нет оскорблений и запрещённого контента</label></div>
         <textarea id="nt-${esc(w.id)}" rows="2" placeholder="Комментарий автору (обязателен при возврате и отклонении)"></textarea>
         <div class="row" style="margin-top:12px"><button class="btn p" onclick="A.modAct('${esc(w.id)}','published')">Опубликовать</button><button class="btn" onclick="A.modAct('${esc(w.id)}','fix')">Вернуть на доработку</button><button class="btn" onclick="A.modAct('${esc(w.id)}','rejected')">Отклонить</button></div></section>`).join('')
@@ -335,13 +345,14 @@
     if (!isAdmin()) return '<div class="form-wrap"><h1 class="page-title">Настройки сайта</h1><div class="b">Раздел доступен только администраторам.</div></div>';
     const s = S.site || {};
     const field = (id, label, value, area) => '<label class="site-field">' + label + (area ? '<textarea id="site-' + id + '" rows="3">' + esc(value || '') + '</textarea>' : '<input id="site-' + id + '" value="' + esc(value || '') + '">') + '</label>';
-    return '<div class="admin-page site-settings"><div class="admin-heading"><div><div class="label">Управление проектом</div><h1 class="page-title">Настройки сайта</h1><p class="lead">Редактируйте содержание журнала без изменения кода.</p></div></div><div class="b settings-card">' +
-      '<section><h2>Айдентика</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Подпись в меню',s.tagline || 'Веб-журнал студентов Новосибирска') + '</section>' +
-      '<section><h2>Главная страница</h2>' + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Подзаголовок',s.home_lead,true) + '</section>' +
-      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Первый снег') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '30 ноября') + '</section>' +
+    const color = /^#[0-9a-fA-F]{6}$/.test(s.accent_color || '') ? s.accent_color : '#e5482d';
+    return '<div class="admin-page site-settings"><div class="settings-intro"><span class="eyebrow">Редактирование без кода</span><h2>Настройки «Черновика»</h2><p class="meta">Один экран для содержания и внешнего вида журнала.</p></div><div class="settings-card">' +
+      '<section><h2>Название и главная</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Короткая подпись',s.tagline || 'Веб-журнал студентов Новосибирска') + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Описание главной',s.home_lead,true) + '</section>' +
+      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Тема месяца') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '') + '</section>' +
       '<section><h2>Объявление</h2>' + field('announcement_title','Заголовок',s.announcement_title) + field('announcement_body','Текст',s.announcement_body,true) + '</section>' +
       '<section><h2>О проекте</h2>' + field('about_text','Описание проекта',s.about_text,true) + '</section>' +
-      '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
+      '<section><h2>Внешний вид</h2><div class="settings-appearance"><label class="site-field">Акцентный цвет<input id="site-accent_color" type="color" value="' + color + '"></label><label class="site-field">Цветовая тема<select id="site-site_theme"><option value="system"' + ((s.site_theme || 'system') === 'system' ? ' selected' : '') + '>Как в системе</option><option value="light"' + (s.site_theme === 'light' ? ' selected' : '') + '>Светлая</option><option value="dark"' + (s.site_theme === 'dark' ? ' selected' : '') + '>Тёмная</option></select></label></div><p class="hint">Настройки оформления применяются ко всему сайту после сохранения.</p></section>' +
+      '<div class="settings-actions"><button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div></div>';
   };
   V.manage = async () => {
     if (!canReview() && !isDemo()) return '<div class="b empty">Раздел доступен редакторам и администраторам.</div>';
@@ -438,10 +449,14 @@
   A.manageTab = (tab) => { S.manageTab = tab; render(); };
 
   A.saveSiteSettings = async () => {
-    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text'];
-    const next = {}; keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : ''; });
+    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text','accent_color','site_theme'];
+    const next = {};
+    keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : (S.site || {})[key] || ''; });
     if (!next.site_name) return toast('Укажите название сайта');
-    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; toast('Настройки сохранены'); render(); } catch (e) { fail(e); }
+    if (!/^#[0-9a-fA-F]{6}$/.test(next.accent_color)) next.accent_color = '#e5482d';
+    if (!['system','light','dark'].includes(next.site_theme)) next.site_theme = 'system';
+    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; render(); toast('Настройки сохранены'); }
+    catch (e) { fail(e); }
   };
   A.filterTeam = () => {
     const q = ($('#team-search')?.value || '').trim().toLowerCase();
@@ -475,18 +490,27 @@
     const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
       : !body ? 'Добавьте текст или подпись к работе' : body.length > 50000 ? 'Текст должен быть не длиннее 50 000 символов'
       : file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'Обложка должна быть в формате JPG, PNG или WebP'
-      : file && file.size > 2 * 1024 * 1024 ? 'Обложка больше 2 МБ'
+      : file && file.size > 10 * 1024 * 1024 ? 'Обложка больше 10 МБ'
       : val('ptags').split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean).length > 5 ? 'Укажите не больше 5 тегов'
       : val('ptags').split(',').some((t) => t.trim().replace(/^#/, '').length > 24) ? 'Каждый тег должен быть не длиннее 24 символов'
       : !$('#pa').checked ? 'Подтвердите авторство' : '';
     if (bad) { er.textContent = bad; return; }
+    const tags = [...new Set(val('ptags').split(',').map((t) => t.trim().replace(/^#/, '').toLowerCase()).filter(Boolean))];
+    const knownTags = new Set((await DB.listWorks()).flatMap((w) => w.tags || []));
+    if (knownTags.size + tags.filter((tag) => !knownTags.has(tag)).length > 30) { er.textContent = 'Достигнут лимит в 30 разных тегов. Выберите существующие.'; return; }
     $('#go').disabled = true;
     try {
-      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags: [...new Set(val('ptags').split(',').map((t) => t.trim().replace(/^#/, '').toLowerCase()).filter(Boolean))] }, file, S.me.id);
+      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags }, file, S.me.id, !!(document.querySelector('#cv[data-remove-cover="true"]')));
       S.editId = null; toast('Отправлено на модерацию'); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
 
+  A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
+  A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
+
+  A.showSelectedFile = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span>' + esc(input.files[0].name) + '</span><button type="button" class="linkbtn" onclick="A.clearSelectedFile()">Убрать файл</button>' : ''; };
+  A.clearSelectedFile = () => { const input = $('#cv'); if (input) { input.value = ''; input.dataset.removeCover = 'true'; } const box = $('#selected-file'); if (box) box.innerHTML = ''; const note = $('#cover-removed'); if (note) note.hidden = false; };
+  A.removeCover = () => { const input = $('#cv'); if (input) input.dataset.removeCover = 'true'; const current = $('#attached-file'); if (current) current.remove(); const note = $('#cover-removed'); if (note) note.hidden = false; };
   A.react = async (id, kind) => {
     if (!S.me) return toast('Войдите, чтобы оставить реакцию');
     try {
@@ -533,6 +557,7 @@
     const h = location.hash.slice(1) || 'home';
     let name = h, arg = null;
     if (h.startsWith('work-')) { name = 'work'; arg = h.slice(5); }
+    if (h.startsWith('author-')) { name = 'author'; arg = h.slice(7); }
     if (['mod','admin','settings'].includes(h)) { S.manageTab = h === 'mod' ? S.tab : h === 'admin' ? 'team' : 'settings'; name = 'manage'; }
     if (!V[name]) name = 'home';
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
@@ -540,6 +565,10 @@
     try {
       try { S.site = Object.assign({}, SITE_DEFAULTS, await DB.getSiteSettings()); } catch (settingsError) { S.site = Object.assign({}, SITE_DEFAULTS); }
       document.title = S.site.site_name || 'Черновик';
+      const accent = /^#[0-9a-fA-F]{6}$/.test(S.site.accent_color || '') ? S.site.accent_color : '#e5482d';
+      document.documentElement.style.setProperty('--acc', accent);
+      if (['light','dark'].includes(S.site.site_theme)) document.documentElement.setAttribute('data-theme', S.site.site_theme);
+      else document.documentElement.removeAttribute('data-theme');
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);

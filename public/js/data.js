@@ -24,7 +24,7 @@
   };
   // Вход по нику без почты: ник превращается в служебный адрес, письма на него не уходят.
   const nickEmail = (nick) => nick.trim().toLowerCase() + '@' + (cfg.NICK_EMAIL_DOMAIN || 'users.chernovik.app');
-  const WORK_SELECT = '*, author:profiles!works_author_id_fkey(id, nick, uni, avatar), reactions(kind)';
+  const WORK_SELECT = '*, author:profiles!works_author_id_fkey(id, nick, uni, avatar), reactions(kind), comments(count)';
 
   /* ================= Live (Supabase) ================= */
   const Live = {
@@ -60,6 +60,7 @@
       const { error } = await sb.from('profiles').update(patch).eq('id', id);
       check(error);
     },
+    async getPublicProfile(id) { const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, bio').eq('id', id).maybeSingle(); check(error); return data; },
     async listProfiles() {
       const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, role, created_at').order('created_at');
       check(error);
@@ -72,7 +73,7 @@
     async getSiteSettings() { const { data, error } = await sb.from('site_settings').select('settings').eq('id', 'main').maybeSingle(); check(error); return data ? data.settings : {}; },
     async saveSiteSettings(settings) { const { data: auth } = await sb.auth.getUser(); const { error } = await sb.from('site_settings').upsert({ id: 'main', settings, updated_by: auth.user.id }, { onConflict: 'id' }); check(error); },
 
-    _work(r) { return { ...r, author: r.author || {}, counts: countKinds(r.reactions) }; },
+    _work(r) { return { ...r, author: r.author || {}, comment_count: (r.comments || []).reduce((n, x) => n + Number(x.count || 0), 0), counts: countKinds(r.reactions) }; },
     async listWorks(o = {}) {
       let q = sb.from('works').select(WORK_SELECT).order('created_at', { ascending: false });
       if (o.status) q = q.eq('status', o.status);
@@ -95,9 +96,10 @@
       check(error);
       return sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
     },
-    async saveWork(w, file, uid) {
+    async saveWork(w, file, uid, clearCover) {
       const row = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
       if (file) row.cover_url = await this._upload(file, uid);
+      else if (clearCover) row.cover_url = null;
       if (w.id) {
         const { error } = await sb.from('works').update({ ...row, status: 'review', editor_note: null }).eq('id', w.id);
         check(error);
@@ -235,6 +237,7 @@
       DB.session = null; save();
     },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
+    async getPublicProfile(id) { const u = user(id); return u ? pub(u) : null; },
     async listProfiles() { return DB.users.map(({ id, nick, uni, avatar, role, created_at }) => ({ id, nick, uni, avatar, role, created_at })); },
     async getSiteSettings() { return DB.siteSettings || {}; },
     async saveSiteSettings(settings) { if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав'); DB.siteSettings = { ...settings }; save(); },
@@ -252,7 +255,7 @@
       const mine = DB.reactions.filter((r) => r.work_id === w.id);
       const c = countKinds(mine);
       KINDS.forEach((k) => { c[k] += (w.base || {})[k] || 0; });
-      return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), counts: c };
+      return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), comment_count: DB.comments.filter((x) => x.work_id === w.id && !x.hidden).length, counts: c };
     },
     async listWorks(o = {}) {
       return DB.works
@@ -262,13 +265,13 @@
         .map((w) => this._work(w));
     },
     async getWork(id) { const w = DB.works.find((x) => x.id === id); return w ? this._work(w) : null; },
-    async saveWork(w, file, uidMe) {
+    async saveWork(w, file, uidMe, clearCover) {
       let cover = null;
-      if (file && file.size < 600e3) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
+      if (file && file.size <= 10 * 1024 * 1024) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
       const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
       if (w.id) {
         const x = DB.works.find((y) => y.id === w.id);
-        Object.assign(x, base, { status: 'review', editor_note: null }, cover ? { cover_url: cover } : {});
+        Object.assign(x, base, { status: 'review', editor_note: null }, cover ? { cover_url: cover } : clearCover ? { cover_url: null } : {});
         save(); return x.id;
       }
       const n = { id: uid(), author_id: uidMe, ...base, cover_url: cover, status: 'review', views: 0, base: {}, created_at: Date.now() };
