@@ -10,7 +10,7 @@ create table public.profiles (
   bio        text not null default '',
   avatar     text not null default 'a1' check (avatar ~ '^a[1-8]$'),   -- готовый аватар из набора, фото не загружаются
   socials    jsonb not null default '{}'::jsonb,   -- {"vk": "...", "telegram": "...", "behance": "..."}
-  role       text not null default 'author' check (role in ('author', 'editor')),
+  role       text not null default 'author' check (role in ('author', 'reviewer', 'admin')),
   consent_at      timestamptz not null default now(),   -- когда пользователь дал согласие (отметка при регистрации)
   consent_version text not null default '2026-11',      -- версия текста согласия
   created_at timestamptz not null default now()
@@ -69,10 +69,40 @@ create table public.reports (
 -- ============ Функции ============
 
 -- Проверка роли редактора (security definer, чтобы не упираться в RLS самой таблицы).
+create or replace function public.is_reviewer()
+returns boolean language sql stable security definer set search_path = public as $
+  select exists (select 1 from public.profiles where id = auth.uid() and role in ('reviewer', 'admin', 'editor'));
+$;
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path = public as $
+  select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
+$;
+
 create or replace function public.is_editor()
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.profiles where id = auth.uid() and role = 'editor');
-$$;
+returns boolean language sql stable security definer set search_path = public as $
+  select public.is_reviewer();
+$;
+
+create or replace function public.set_profile_role(target_profile uuid, new_role text)
+returns void language plpgsql security definer set search_path = public as $
+declare
+  old_role text;
+begin
+  if not public.is_admin() then raise exception 'Недостаточно прав'; end if;
+  if new_role not in ('author', 'reviewer', 'admin') then raise exception 'Недопустимая роль'; end if;
+  if target_profile = auth.uid() then raise exception 'Нельзя менять собственную роль'; end if;
+  select role into old_role from public.profiles where id = target_profile;
+  if old_role is null then raise exception 'Пользователь не найден'; end if;
+  if old_role = 'admin' and new_role <> 'admin'
+     and (select count(*) from public.profiles where role = 'admin') <= 1 then
+    raise exception 'Нельзя снять роль с последнего администратора';
+  end if;
+  update public.profiles set role = new_role where id = target_profile;
+end;
+$;
+revoke all on function public.set_profile_role(uuid, text) from public, anon;
+grant execute on function public.set_profile_role(uuid, text) to authenticated;
 
 -- Профиль создаётся автоматически при регистрации. Ник и вуз приходят из метаданных signUp.
 create or replace function public.handle_new_user()
@@ -100,9 +130,15 @@ $$;
 
 -- Пользователь может сам удалить аккаунт: вместе с ним удаляются профиль, работы, комментарии и реакции.
 create or replace function public.delete_my_account()
-returns void language sql security definer set search_path = public, auth as $$
+returns void language plpgsql security definer set search_path = public, auth as $
+begin
+  if exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
+     and (select count(*) from public.profiles where role = 'admin') <= 1 then
+    raise exception 'Перед удалением последнего администратора назначьте другого';
+  end if;
   delete from auth.users where id = auth.uid();
-$$;
+end;
+$;
 revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
 
@@ -122,29 +158,29 @@ create policy "profiles: update own" on public.profiles for update
 
 -- works: читать опубликованное всем; свои и всё для редакторов.
 create policy "works: read" on public.works for select
-  using (status = 'published' or author_id = auth.uid() or public.is_editor());
+  using (status = 'published' or author_id = auth.uid() or public.is_reviewer());
 create policy "works: insert own for review" on public.works for insert
   with check (author_id = auth.uid() and status = 'review');
 create policy "works: author edits while review or fix" on public.works for update
   using (author_id = auth.uid() and status in ('review', 'fix'))
   with check (author_id = auth.uid() and status = 'review');
 create policy "works: editor updates" on public.works for update
-  using (public.is_editor()) with check (public.is_editor());
+  using (public.is_reviewer()) with check (public.is_reviewer());
 create policy "works: delete own or editor" on public.works for delete
-  using (author_id = auth.uid() or public.is_editor());
+  using (author_id = auth.uid() or public.is_reviewer());
 
 -- comments: комментировать опубликованные работы могут только авторизованные.
 create policy "comments: read visible" on public.comments for select
-  using (hidden = false or author_id = auth.uid() or public.is_editor());
+  using (hidden = false or author_id = auth.uid() or public.is_reviewer());
 create policy "comments: insert own" on public.comments for insert
   with check (
     author_id = auth.uid()
     and exists (select 1 from public.works w where w.id = work_id and w.status = 'published')
   );
 create policy "comments: editor hides" on public.comments for update
-  using (public.is_editor()) with check (public.is_editor());
+  using (public.is_reviewer()) with check (public.is_reviewer());
 create policy "comments: delete own or editor" on public.comments for delete
-  using (author_id = auth.uid() or public.is_editor());
+  using (author_id = auth.uid() or public.is_reviewer());
 
 -- reactions: видны всем, ставить и снимать можно только свои.
 create policy "reactions: read all" on public.reactions for select using (true);
@@ -153,9 +189,9 @@ create policy "reactions: delete own" on public.reactions for delete using (user
 
 -- reports: подавать может любой вошедший, читать и закрывать только редакторы.
 create policy "reports: insert own" on public.reports for insert with check (reporter_id = auth.uid());
-create policy "reports: editor reads" on public.reports for select using (public.is_editor());
+create policy "reports: editor reads" on public.reports for select using (public.is_reviewer());
 create policy "reports: editor updates" on public.reports for update
-  using (public.is_editor()) with check (public.is_editor());
+  using (public.is_reviewer()) with check (public.is_reviewer());
 
 -- ============ Хранилище обложек ============
 
