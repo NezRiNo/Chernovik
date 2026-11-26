@@ -90,16 +90,20 @@
       check(error);
       return data ? this._work(data) : null;
     },
-    async _upload(file, uid) {
-      const path = `${uid}/${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`;
-      const { error } = await sb.storage.from('covers').upload(path, file);
+    async _upload(file, uid, bucket = 'work-media') {
+      const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.name.replace(/[^\w.-]/g, '_')}`;
+      const { error } = await sb.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
       check(error);
-      return sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
+      return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
     },
-    async saveWork(w, file, uid, clearCover) {
+    async saveWork(w, files, audio, uid) {
       const row = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
-      if (file) row.cover_url = await this._upload(file, uid);
-      else if (clearCover) row.cover_url = null;
+      const attachments = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type !== 'audio') : [];
+      for (const file of (files || [])) attachments.push({ type: 'image', url: await this._upload(file, uid), name: file.name, mime_type: file.type });
+      if (audio) attachments.push({ type: 'audio', url: await this._upload(audio, uid), name: audio.name, mime_type: audio.type });
+      row.attachments = attachments;
+      const firstImage = attachments.find((x) => x.type === 'image');
+      if (firstImage) row.cover_url = firstImage.url;
       if (w.id) {
         const { error } = await sb.from('works').update({ ...row, status: 'review', editor_note: null }).eq('id', w.id);
         check(error);
@@ -265,16 +269,25 @@
         .map((w) => this._work(w));
     },
     async getWork(id) { const w = DB.works.find((x) => x.id === id); return w ? this._work(w) : null; },
-    async saveWork(w, file, uidMe, clearCover) {
-      let cover = null;
-      if (file && file.size <= 50 * 1024 * 1024) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
-      const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
+    async saveWork(w, files, audio, uidMe) {
+      const toDataUrl = (file) => new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+      const attachments = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type !== 'audio') : [];
+      for (const file of (files || [])) {
+        if (file.size > 2 * 1024 * 1024) throw new Error('В демо-режиме файл должен быть не больше 2 МБ. Для больших файлов подключите Supabase.');
+        attachments.push({ type: 'image', url: await toDataUrl(file), name: file.name, mime_type: file.type });
+      }
+      if (audio) {
+        if (audio.size > 2 * 1024 * 1024) throw new Error('В демо-режиме аудио должно быть не больше 2 МБ. Для больших файлов подключите Supabase.');
+        attachments.push({ type: 'audio', url: await toDataUrl(audio), name: audio.name, mime_type: audio.type });
+      }
+      const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [], attachments };
+      const firstImage = attachments.find((x) => x.type === 'image');
       if (w.id) {
         const x = DB.works.find((y) => y.id === w.id);
-        Object.assign(x, base, { status: 'review', editor_note: null }, cover ? { cover_url: cover } : clearCover ? { cover_url: null } : {});
+        Object.assign(x, base, { status: 'review', editor_note: null }, firstImage ? { cover_url: firstImage.url } : {});
         save(); return x.id;
       }
-      const n = { id: uid(), author_id: uidMe, ...base, cover_url: cover, status: 'review', views: 0, base: {}, created_at: Date.now() };
+      const n = { id: uid(), author_id: uidMe, ...base, cover_url: firstImage ? firstImage.url : null, status: 'review', views: 0, base: {}, created_at: Date.now() };
       DB.works.push(n); save(); return n.id;
     },
     async setStatus(id, status, note) {
