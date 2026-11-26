@@ -85,7 +85,7 @@
       return sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
     },
     async saveWork(w, file, uid) {
-      const row = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description };
+      const row = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
       if (file) row.cover_url = await this._upload(file, uid);
       if (w.id) {
         const { error } = await sb.from('works').update({ ...row, status: 'review', editor_note: null }).eq('id', w.id);
@@ -227,7 +227,7 @@
       const mine = DB.reactions.filter((r) => r.work_id === w.id);
       const c = countKinds(mine);
       KINDS.forEach((k) => { c[k] += (w.base || {})[k] || 0; });
-      return { ...w, created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), counts: c };
+      return { ...w, tags: Array.isArray(w.tags) ? w.tags : [], created_at: new Date(w.created_at).toISOString(), author: pub(user(w.author_id)), counts: c };
     },
     async listWorks(o = {}) {
       return DB.works
@@ -240,7 +240,7 @@
     async saveWork(w, file, uidMe) {
       let cover = null;
       if (file && file.size < 600e3) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
-      const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description };
+      const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
       if (w.id) {
         const x = DB.works.find((y) => y.id === w.id);
         Object.assign(x, base, { status: 'review', editor_note: null }, cover ? { cover_url: cover } : {});
