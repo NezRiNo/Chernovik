@@ -43,18 +43,28 @@ create table public.comments (
   id         uuid primary key default gen_random_uuid(),
   work_id    uuid not null references public.works(id) on delete cascade,
   author_id  uuid not null references public.profiles(id) on delete cascade,
+  parent_id  uuid references public.comments(id) on delete cascade,
   body       text not null check (char_length(body) between 1 and 2000),
   hidden     boolean not null default false,
   created_at timestamptz not null default now()
 );
 create index comments_work_idx on public.comments (work_id, created_at);
+create index comments_parent_idx on public.comments (parent_id, created_at);
 
 create table public.reactions (
   work_id uuid not null references public.works(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
-  kind    text not null check (kind in ('like', 'hit', 'more')),
+  kind    text not null check (kind = 'like'),
   primary key (work_id, user_id, kind)
 );
+
+create table public.comment_reactions (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+create index comment_reactions_user_idx on public.comment_reactions (user_id);
 
 create table public.reports (
   id          uuid primary key default gen_random_uuid(),
@@ -177,6 +187,10 @@ create policy "comments: insert own" on public.comments for insert
   with check (
     author_id = auth.uid()
     and exists (select 1 from public.works w where w.id = work_id and w.status = 'published')
+    and (
+      parent_id is null
+      or exists (select 1 from public.comments parent where parent.id = comments.parent_id and parent.work_id = comments.work_id and parent.parent_id is null and parent.hidden = false)
+    )
   );
 create policy "comments: editor hides" on public.comments for update
   using (public.is_reviewer()) with check (public.is_reviewer());
@@ -193,6 +207,16 @@ create policy "reports: insert own" on public.reports for insert with check (rep
 create policy "reports: editor reads" on public.reports for select using (public.is_reviewer());
 create policy "reports: editor updates" on public.reports for update
   using (public.is_reviewer()) with check (public.is_reviewer());
+
+-- Лайки комментариев
+alter table public.comment_reactions enable row level security;
+create policy "comment reactions: read all" on public.comment_reactions for select using (true);
+create policy "comment reactions: insert own" on public.comment_reactions for insert to authenticated
+  with check ((select auth.uid()) = user_id and exists (select 1 from public.comments c where c.id = comment_id and c.hidden = false));
+create policy "comment reactions: delete own" on public.comment_reactions for delete to authenticated
+  using ((select auth.uid()) = user_id);
+grant select on public.comment_reactions to anon, authenticated;
+grant insert, delete on public.comment_reactions to authenticated;
 
 -- ============ Хранилище обложек ============
 

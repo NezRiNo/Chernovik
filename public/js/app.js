@@ -188,10 +188,26 @@
     const allowed = w && (w.status === 'published' || (S.me && (S.me.id === w.author_id || canReview())));
     if (!allowed) return `<div class="b empty"><b>Работа не найдена</b>Возможно, она ещё на проверке или была удалена.<div style="margin-top:16px"><a class="btn" href="#catalog">В каталог</a></div></div>`;
     if (w.status === 'published' && !S.seen[id]) { S.seen[id] = 1; DB.incViews(id); }
-    const [rx, cm] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id)]);
+    const [rx, cm] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id, S.me && S.me.id)]);
     const pubd = w.status === 'published';
-    const rb = [['like', 'heart', 'Понравилось'], ['hit', 'spark', 'Зацепило'], ['more', 'pen', 'Хочу ещё']]
-      .map(([k, i, t]) => `<button class="rb${rx.mine.includes(k) ? ' on' : ''}" onclick="A.react('${esc(id)}','${k}')">${ic(i, 'sm')}${t} ${rx.counts[k]}</button>`).join('');
+    const rb = `<button class="rb rb-like${rx.mine.includes('like') ? ' on' : ''}" aria-label="Нравится" title="Нравится" onclick="A.react('${esc(id)}','like')">${ic('heart', 'sm')}<span>${rx.counts.like || 0}</span></button>`;
+    const renderComment = (c, isReply = false) => {
+      const children = isReply ? [] : cm.filter((item) => item.parent_id === c.id);
+      return `<div class="comment${isReply ? ' comment-reply' : ''}">
+        ${avatar(avOf(c.author), 32)}
+        <div class="comment-main">
+          <b>${esc((c.author || {}).nick || 'автор')}</b>
+          <p>${esc(c.body)}</p>
+          <div class="comment-tools">
+            <button class="comment-like${c.liked_by_me ? ' on' : ''}" aria-label="Нравится" title="Нравится" onclick="A.commentLike('${esc(c.id)}',${!!c.liked_by_me})">${ic('heart', 'sm')}<span>${c.like_count || 0}</span></button>
+            ${!isReply ? `<button class="linkbtn" onclick="A.toggleReply('${esc(c.id)}')">Ответить</button>` : ''}
+            <button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button>
+          </div>
+          ${!isReply ? `<form class="reply-form" id="reply-form-${esc(c.id)}" hidden onsubmit="event.preventDefault();A.reply('${esc(id)}','${esc(c.id)}')"><textarea id="reply-input-${esc(c.id)}" rows="2" maxlength="2000" required placeholder="Ваш ответ…"></textarea><div class="reply-actions"><span class="hint">До 2 000 символов</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Ответить</button></div></form>` : ''}
+          ${children.map((child) => renderComment(child, true)).join('')}
+        </div>
+      </div>`;
+    };
     return `<article class="article"><a class="back" href="#catalog">${ic('back', 'sm')}Назад в каталог</a>
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
@@ -204,7 +220,7 @@
       ${pubd ? `<div class="reactions">${rb}</div>
       <h2 style="font-size:26px;margin-bottom:12px">Комментарии</h2>
       <form class="comment-form" onsubmit="event.preventDefault();A.comment('${esc(id)}')"><label class="sr-only" for="ci">Ваш комментарий</label><textarea id="ci" rows="3" maxlength="2000" required ${S.me ? '' : 'disabled'} placeholder="${S.me ? 'Поделитесь впечатлением или задайте вопрос…' : 'Войдите, чтобы комментировать'}"></textarea><div class="row comment-actions"><button type="button" class="emoji-toggle" onclick="A.toggleEmoji()" ${S.me ? '' : 'disabled'}>☺ Смайлики</button><div class="emoji-picker" id="emoji-picker" hidden>${['😀','🙂','😊','😍','🥹','😂','🤍','❤️','✨','👏','🔥','🌿','🌸','☀️','🎨','📚','🫶'].map((e) => '<button type="button" onclick="A.insertEmoji(\'' + e + '\')">' + e + '</button>').join('')}</div><span class="hint">До 2 000 символов</span><button class="btn p" type="submit" ${S.me ? '' : 'disabled'}>Отправить</button></div></form>
-      ${cm.map((c) => `<div class="comment">${avatar(avOf(c.author), 32)}<div><b>${esc((c.author || {}).nick || 'автор')}</b><p>${esc(c.body)}</p><button class="linkbtn" onclick="A.report('comment','${esc(c.id)}')">Пожаловаться</button></div></div>`).join('')}` : ''}
+      ${cm.filter((c) => !c.parent_id).map((c) => renderComment(c)).join('')}` : ''}
     </article>`;
   };
 
@@ -564,6 +580,26 @@
     const button = document.querySelector('.comment-form button[type="submit"]');
     if (button) button.disabled = true;
     try { await DB.addComment(id, t, S.me.id); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
+  };
+  A.toggleReply = (commentId) => {
+    if (!S.me) return toast('Войдите, чтобы отвечать');
+    const form = document.getElementById('reply-form-' + commentId);
+    if (form) { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('textarea').focus(); }
+  };
+  A.reply = async (workId, parentId) => {
+    if (!S.me) return toast('Войдите, чтобы отвечать');
+    const field = document.getElementById('reply-input-' + parentId);
+    const t = field ? field.value.trim() : '';
+    if (!t) return toast('Напишите ответ');
+    if (t.length > 2000) return toast('Ответ должен быть не длиннее 2 000 символов');
+    const form = document.getElementById('reply-form-' + parentId);
+    const button = form && form.querySelector('button[type="submit"]');
+    if (button) button.disabled = true;
+    try { await DB.addComment(workId, t, S.me.id, parentId); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
+  };
+  A.commentLike = async (commentId, liked) => {
+    if (!S.me) return toast('Войдите, чтобы поставить лайк');
+    try { await DB.toggleCommentLike(commentId, S.me.id, liked); await render(); } catch (e) { fail(e); }
   };
 
   A.report = (type, id) => {
