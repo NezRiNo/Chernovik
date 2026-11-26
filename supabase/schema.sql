@@ -27,6 +27,7 @@ create table public.works (
   uni          text,
   body         text not null check (char_length(body) <= 50000),
   description  text not null default '' check (char_length(description) <= 1000),
+  tags         text[] not null default '{}' check (cardinality(tags) <= 5 and array_position(tags, null) is null),
   cover_url    text,
   status       text not null default 'review' check (status in ('review', 'published', 'fix', 'rejected')),
   editor_note  text,
