@@ -197,7 +197,7 @@ create policy "reports: editor updates" on public.reports for update
 -- ============ Хранилище обложек ============
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('covers', 'covers', true, 2097152, array['image/jpeg', 'image/png', 'image/webp'])
+values ('covers', 'covers', true, 52428800, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;
 
 create policy "covers: public read" on storage.objects for select using (bucket_id = 'covers');
@@ -260,3 +260,38 @@ create policy "follows: insert own" on public.author_follows for insert to authe
 create policy "follows: delete own" on public.author_follows for delete to authenticated using ((select auth.uid()) = follower_id);
 grant select on public.author_follows to anon, authenticated;
 grant insert, delete on public.author_follows to authenticated;
+
+
+-- ============ Галереи и аудиовложения работ ============
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'work-media',
+  'work-media',
+  true,
+  52428800,
+  array[
+    'image/jpeg','image/png','image/webp',
+    'audio/mpeg','audio/mp3','audio/mp4','audio/aac',
+    'audio/ogg','audio/wav','audio/x-wav','audio/webm','audio/flac'
+  ]
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "work media public read" on storage.objects
+  for select using (bucket_id = 'work-media');
+create policy "work media upload own folder" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'work-media'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+create policy "work media delete own" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'work-media'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
