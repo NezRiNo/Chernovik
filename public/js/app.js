@@ -104,8 +104,8 @@
   const card = (w) => `<a class="b tight work s4" href="#work-${esc(w.id)}">${cover(w)}<span class="txt">
       <span class="meta">${esc(w.form)}</span><h3>${esc(w.title)}</h3>
       ${w.tags && w.tags.length ? `<span class="tags">${tagsOf(w.tags)}</span>` : ''}
-      <span class="meta">${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
-      <span class="rx"><span title="Понравилось">${ic('heart', 'sm')}${w.counts.like}</span><span title="Зацепило">${ic('spark', 'sm')}${w.counts.hit}</span><span title="Хочу ещё">${ic('pen', 'sm')}${w.counts.more}</span></span></span></a>`;
+      <span class="meta">Автор: ${esc(w.author.nick || '')}, ${esc(w.uni || 'вуз не указан')}</span>
+      <span class="rx"><span title="Просмотры">${ic('eye', 'sm')}${Number(w.views || 0)}</span><span title="Комментарии">${ic('message', 'sm')}${Number(w.comment_count || 0)}</span><span title="Реакции">${ic('heart', 'sm')}${w.counts.like + w.counts.hit + w.counts.more}</span></span></span></a>`;
   const empty = (title, text, btn, span = 's12') => `<div class="b empty ${span}"><b>${title}</b><p>${text}</p>${btn ? `<div style="margin-top:18px">${btn}</div>` : ''}</div>`;
   const options = (list, cur, first) => (first ? `<option value="">${first}</option>` : '') + list.map((x) => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
 
