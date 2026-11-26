@@ -246,14 +246,18 @@
   V.publish = async () => {
     if (!S.me) { toast('Сначала войдите или зарегистрируйтесь'); location.hash = 'register'; return ''; }
     const w = S.editId ? await DB.getWork(S.editId) : null;
+    const knownWorks = await DB.listWorks();
+    const knownTags = [...new Set(knownWorks.flatMap((x) => x.tags || []))].sort((a,b) => a.localeCompare(b,'ru'));
     return `<h1 class="page-title">${w ? 'Правки к работе' : 'Новая работа'}</h1><div class="bento">
       <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
         <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
-        <div class="field"><label for="ptags">Теги (до 5)</label><input id="ptags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="например: город, студенческая жизнь, осень"><div class="hint">Разделяйте запятыми. Каждый тег — до 24 символов.</div></div>
-        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 2 МБ. Без обложки подставим рисунок по умолчанию.</div></div>
+        <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
+        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 10 МБ.</div>
+          ${w && w.cover_url ? `<div class="attached-file" id="attached-file"><img src="${esc(w.cover_url)}" alt="Текущая обложка"><span>Обложка прикреплена</span><button type="button" class="linkbtn" onclick="A.removeCover()">Удалить файл</button></div>` : ''}
+          <div class="hint" id="cover-removed" hidden>Файл будет удалён после сохранения.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
         <div class="err" id="er"></div><button class="btn p" id="go" onclick="A.submit()">Отправить на модерацию</button></section>
       <aside class="b ink s5"><div class="label">Что дальше</div><h2 style="font-size:26px;margin-bottom:12px">Редактор прочитает работу</h2>
