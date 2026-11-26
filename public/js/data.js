@@ -69,6 +69,8 @@
       const { error } = await sb.rpc('set_profile_role', { target_profile: id, new_role: role });
       check(error);
     },
+    async getSiteSettings() { const { data, error } = await sb.from('site_settings').select('settings').eq('id', 'main').maybeSingle(); check(error); return data ? data.settings : {}; },
+    async saveSiteSettings(settings) { const { data: auth } = await sb.auth.getUser(); const { error } = await sb.from('site_settings').upsert({ id: 'main', settings, updated_by: auth.user.id }, { onConflict: 'id' }); check(error); },
 
     _work(r) { return { ...r, author: r.author || {}, counts: countKinds(r.reactions) }; },
     async listWorks(o = {}) {
@@ -173,6 +175,7 @@
   const day = 864e5;
   const seed = () => ({
     session: null,
+    siteSettings: {},
     users: [
       { id: 'u1', nick: 'mila_writes', uni: 'НГУ', bio: 'Пишу короткую прозу о городе и людях.', socials: { telegram: '@mila_writes' }, role: 'author', password: 'demo1234' },
       { id: 'u2', nick: 'artem_l', uni: 'НГТУ (НЭТИ)', bio: '', socials: {}, role: 'author', password: 'demo1234' },
@@ -233,6 +236,8 @@
     },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
     async listProfiles() { return DB.users.map(({ id, nick, uni, avatar, role, created_at }) => ({ id, nick, uni, avatar, role, created_at })); },
+    async getSiteSettings() { return DB.siteSettings || {}; },
+    async saveSiteSettings(settings) { if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав'); DB.siteSettings = { ...settings }; save(); },
     async setProfileRole(id, role) {
       if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав');
       if (!['author', 'reviewer', 'admin'].includes(role)) throw new Error('Неизвестная роль');

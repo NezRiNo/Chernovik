@@ -22,6 +22,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
+  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Здесь студенты публикуют то, что пишут, рисуют и снимают', home_lead: 'Редактор читает каждую работу. Авторы получают читателей, а не лайки.', theme_title: 'Первый снег', theme_description: 'Тема необязательная: можно участвовать, а можно публиковать своё.', theme_deadline: '30 ноября', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
@@ -115,13 +116,14 @@
     // [ключ, подпись в меню, подпись на телефоне, значок]
     const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
     const mod = ['mod', 'Редакция', 'Редакция', 'shield'], admin = ['admin', 'Команда', 'Команда', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
-    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin] : []), about];
+    const settings = ['settings', 'Настройки сайта', 'Настройки', 'pen'];
+    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin, settings] : []), about];
     const tab = [...base, canReview() ? mod : about, ...(isAdmin() ? [admin] : [])];
     const cur = active === 'work' ? 'catalog' : active;
     const me = S.me
       ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
       : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
-    return `<div class="shell"><aside class="side"><a class="brand" href="#home">Черновик<small>Веб-журнал студентов Новосибирска</small></a>
+    return `<div class="shell"><aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
       <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
       <div class="side-foot">${me}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</div></aside>
       <main class="main"><div class="page">${html}</div>${footer()}</main>
@@ -136,17 +138,20 @@
     const authors = new Set(ws.map((w) => w.author.id)).size;
     const unis = new Set(ws.map((w) => w.uni).filter(Boolean)).size;
     const f = ws[0];
+    const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
+      ? `<section class="b s12 site-announcement"><div class="label">Объявление</div>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
     const feat = f
       ? `<a class="b tight s8 big-work" href="#work-${esc(f.id)}">${cover(f)}<span class="txt"><span class="meta">Новое в журнале, ${esc(f.form.toLowerCase())}</span><h3>${esc(f.title)}</h3><span class="meta">${esc(f.author.nick || '')}, ${esc(f.uni || '')}</span><span class="excerpt">${esc(f.body)}</span></span></a>`
       : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>', 's8');
     return `<div class="bento">
-      <section class="b hero s8"><div class="label">Веб-журнал студентов Новосибирска</div>
-        <h1>Здесь студенты публикуют то, что пишут, рисуют и снимают</h1>
-        <p class="lead">Редактор читает каждую работу. Авторы получают читателей, а не лайки.</p>
+      <section class="b hero s8"><div class="label">${esc((S.site || {}).home_label || "Веб-журнал студентов Новосибирска")}</div>
+        <h1>${esc((S.site || {}).home_heading || "Здесь студенты публикуют то, что пишут, рисуют и снимают")}</h1>
+        <p class="lead">${esc((S.site || {}).home_lead || "Редактор читает каждую работу. Авторы получают читателей, а не лайки.")}</p>
         <div class="row"><a class="btn p big" href="#publish">Опубликовать работу</a><a class="btn big" href="#catalog">Читать журнал</a></div></section>
-      <section class="b acc s4"><div class="label">Тема месяца, ноябрь</div><div class="theme-title">«Первый снег»</div>
-        <p>Тема необязательная: можно участвовать, а можно публиковать своё. Работы принимаем до 30 ноября.</p>
+      <section class="b acc s4"><div class="label">Тема месяца</div><div class="theme-title">«${esc((S.site || {}).theme_title || "Первый снег")}»</div>
+        <p>${esc((S.site || {}).theme_description || "Тема необязательная: можно участвовать, а можно публиковать своё.")} ${(S.site || {}).theme_deadline ? "Работы принимаем до " + esc(S.site.theme_deadline) + "." : ""}</p>
         <a class="btn light" href="#publish">Участвовать</a></section>
+      ${announcement}
       ${feat}
       <section class="b ink s4"><div class="label">Журнал сейчас</div><div class="stats">
         <div><div class="stat">${ws.length}</div><span>работ</span></div><div><div class="stat">${authors}</div><span>авторов</span></div><div><div class="stat">${unis}</div><span>вузов</span></div></div></section>
@@ -331,8 +336,20 @@
     </div>`;
   };
 
+  V.settings = async () => {
+    if (!isAdmin()) return '<div class="form-wrap"><h1 class="page-title">Настройки сайта</h1><div class="b">Раздел доступен только администраторам.</div></div>';
+    const s = S.site || {};
+    const field = (id, label, value, area) => '<label class="site-field">' + label + (area ? '<textarea id="site-' + id + '" rows="3">' + esc(value || '') + '</textarea>' : '<input id="site-' + id + '" value="' + esc(value || '') + '">') + '</label>';
+    return '<div class="admin-page site-settings"><div class="admin-heading"><div><div class="label">Управление проектом</div><h1 class="page-title">Настройки сайта</h1><p class="lead">Редактируйте содержание журнала без изменения кода.</p></div></div><div class="b settings-card">' +
+      '<section><h2>Айдентика</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Подпись в меню',s.tagline || 'Веб-журнал студентов Новосибирска') + '</section>' +
+      '<section><h2>Главная страница</h2>' + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Подзаголовок',s.home_lead,true) + '</section>' +
+      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Первый снег') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '30 ноября') + '</section>' +
+      '<section><h2>Объявление</h2>' + field('announcement_title','Заголовок',s.announcement_title) + field('announcement_body','Текст',s.announcement_body,true) + '</section>' +
+      '<section><h2>О проекте</h2>' + field('about_text','Описание проекта',s.about_text,true) + '</section>' +
+      '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
+  };
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
-    <p>«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.</p>
+    <p>${esc((S.site || {}).about_text || "«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.")}</p>
     <p>Каждую работу читает редактор, поэтому здесь нет шума и спама. Читать можно без регистрации, публиковаться и комментировать могут зарегистрированные участники.</p></div>`;
 
   const TERMS = [
@@ -411,6 +428,12 @@
     catch (e) { $('#er').textContent = e.message; }
   };
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
+  A.saveSiteSettings = async () => {
+    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text'];
+    const next = {}; keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : ''; });
+    if (!next.site_name) return toast('Укажите название сайта');
+    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; toast('Настройки сохранены'); render(); } catch (e) { fail(e); }
+  };
   A.filterTeam = () => {
     const q = ($('#team-search')?.value || '').trim().toLowerCase();
     const role = $('#team-filter')?.value || '';
@@ -505,6 +528,8 @@
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
     const t = ++S.tok;
     try {
+      try { S.site = Object.assign({}, SITE_DEFAULTS, await DB.getSiteSettings()); } catch (settingsError) { S.site = Object.assign({}, SITE_DEFAULTS); }
+      document.title = S.site.site_name || 'Черновик';
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);
