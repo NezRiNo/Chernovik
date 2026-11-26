@@ -28,6 +28,7 @@ create table if not exists public.comment_reactions (
   created_at timestamptz not null default now(),
   primary key (comment_id, user_id)
 );
+create index if not exists comment_reactions_user_idx on public.comment_reactions (user_id);
 alter table public.comment_reactions enable row level security;
 
 drop policy if exists "comment reactions: read all" on public.comment_reactions;
@@ -37,7 +38,7 @@ drop policy if exists "comment reactions: insert own" on public.comment_reaction
 create policy "comment reactions: insert own" on public.comment_reactions
   for insert to authenticated
   with check (
-    user_id = auth.uid()
+    (select auth.uid()) = user_id
     and exists (select 1 from public.comments c where c.id = comment_id and c.hidden = false)
   );
 drop policy if exists "comment reactions: delete own" on public.comment_reactions;
