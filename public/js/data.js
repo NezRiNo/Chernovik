@@ -267,7 +267,7 @@
     async getWork(id) { const w = DB.works.find((x) => x.id === id); return w ? this._work(w) : null; },
     async saveWork(w, file, uidMe, clearCover) {
       let cover = null;
-      if (file && file.size <= 10 * 1024 * 1024) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
+      if (file && file.size <= 50 * 1024 * 1024) cover = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); });
       const base = { title: w.title, form: w.form, uni: w.uni, body: w.body, description: w.description, tags: w.tags || [] };
       if (w.id) {
         const x = DB.works.find((y) => y.id === w.id);
