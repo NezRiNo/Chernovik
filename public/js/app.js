@@ -22,7 +22,7 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', manageTab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
-  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Здесь студенты публикуют то, что пишут, рисуют и снимают', home_lead: 'Редактор читает каждую работу. Авторы получают читателей, а не лайки.', theme_title: 'Первый снег', theme_description: 'Тема необязательная: можно участвовать, а можно публиковать своё.', theme_deadline: '30 ноября', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.' };
+  const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Идеи заслуживают быть увиденными.', home_lead: '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.', theme_title: 'Тема месяца', theme_description: 'Публикуйте то, что хочется показать читателям.', theme_deadline: '', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска.', accent_color: '#e5482d', site_theme: 'system' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
@@ -131,32 +131,27 @@
   const V = {};
 
   V.home = async () => {
-    const ws = await DB.listWorks({ status: 'published' });
+    const ws = await DB.listWorks({ status: 'published', limit: 6 });
     const authors = new Set(ws.map((w) => w.author.id)).size;
-    const unis = new Set(ws.map((w) => w.uni).filter(Boolean)).size;
-    const featured = ws[0];
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
-      ? `<section class="home-announcement"><span class="eyebrow">Новости проекта</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const featuredBlock = featured
-      ? `<a class="home-feature" href="#work-${esc(featured.id)}">${cover(featured)}<span class="home-feature-copy"><span class="eyebrow">Свежая публикация · ${esc(featured.form.toLowerCase())}</span><h2>${esc(featured.title)}</h2><span class="meta">Автор: ${esc(featured.author.nick || '')} · ${esc(featured.uni || '')}</span><span class="home-feature-link">Читать работу →</span></span></a>`
-      : `<section class="home-feature home-feature-empty"><span class="eyebrow">Первая публикация</span><h2>У журнала пока чистая страница</h2><p>Станьте первым автором — поделитесь текстом, иллюстрацией или фотографией.</p><a class="btn p" href="#publish">Опубликовать работу</a></section>`;
-    return `<div class="home-page">
+      ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
+    const works = ws.length
+      ? `<section class="home-latest"><div class="home-section-head"><div><span class="eyebrow">Свежие публикации</span><h2>Недавно в журнале</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div><div class="home-work-grid">${ws.slice(0,3).map(card).join('')}</div></section>`
+      : `<section class="home-empty"><div><span class="eyebrow">Первая публикация</span><h2>Начнём эту историю вместе?</h2><p>Поделитесь текстом, иллюстрацией или фотографией — здесь её смогут увидеть первые читатели.</p><a class="btn p" href="#publish">Опубликовать работу</a></div></section>`;
+    return `<div class="home-page home-page-simple">
       <section class="home-hero">
-        <div class="home-hero-copy"><span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
+        <div class="home-hero-copy">
+          <span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
           <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
-          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством, найти первых читателей и открыть новые имена.')}</p>
-          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Исследовать журнал <span>↗</span></a></div>
-          <div class="home-trust"><span>${ws.length} публикаций</span><i></i><span>${authors} авторов</span><i></i><span>${unis} вузов</span></div>
+          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.')}</p>
+          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Открыть журнал ↗</a></div>
+          <div class="home-trust"><span>${ws.length} недавних публикаций</span><i></i><span>${authors} авторов</span></div>
         </div>
         <div class="home-hero-art" aria-hidden="true"><div class="art-sheet art-sheet-back"></div><div class="art-sheet art-sheet-front"><span class="art-mark">ч.</span><span class="art-caption">твоя идея<br>может больше</span><span class="art-line"></span></div><span class="art-orbit"></span></div>
       </section>
+      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Тема месяца')}</h2><p>${esc((S.site || {}).theme_description || 'Публикуйте то, что хочется показать читателям.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Участвовать ↗</a></section>
       ${announcement}
-      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Первый снег')}</h2><p>${esc((S.site || {}).theme_description || 'Тема необязательная — публикуйте то, что действительно хочется.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Откликнуться на тему ↗</a></section>
-      <div class="home-section-head"><div><span class="eyebrow">Выбор редакции</span><h2>Истории, которые стоит открыть</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div>
-      ${featuredBlock}
-      ${ws.length > 1 ? `<div class="home-work-grid">${ws.slice(1,7).map(card).join('')}</div>` : ''}
-      <section class="home-how"><div><span class="eyebrow">Начать просто</span><h2>Твой голос —<br>твоя первая публикация.</h2><p>Не нужно ждать идеального момента. «Черновик» создан, чтобы пробовать, делиться и находить своих читателей.</p><a class="btn p" href="#publish">Начать публикацию</a></div><div class="home-steps"><article><b>01</b><div><h3>Поделись</h3><p>Загрузи текст, фото, иллюстрацию или другой творческий материал.</p></div></article><article><b>02</b><div><h3>Получи отклик</h3><p>Редактор поможет подготовить работу к публикации.</p></div></article><article><b>03</b><div><h3>Найди читателей</h3><p>Твою работу увидит сообщество студентов Новосибирска.</p></div></article></div></section>
-      <section class="home-community"><span class="eyebrow">Сообщество «Черновика»</span><h2>У каждого есть что показать.</h2><p>Открой журнал, найди вдохновение или сделай первый шаг как автор.</p><div class="home-actions"><a class="btn p" href="#publish">Опубликовать работу</a><a class="btn" href="#catalog">Перейти в каталог</a></div></section>
+      ${works}
     </div>`;
   };
 
@@ -335,13 +330,14 @@
     if (!isAdmin()) return '<div class="form-wrap"><h1 class="page-title">Настройки сайта</h1><div class="b">Раздел доступен только администраторам.</div></div>';
     const s = S.site || {};
     const field = (id, label, value, area) => '<label class="site-field">' + label + (area ? '<textarea id="site-' + id + '" rows="3">' + esc(value || '') + '</textarea>' : '<input id="site-' + id + '" value="' + esc(value || '') + '">') + '</label>';
-    return '<div class="admin-page site-settings"><div class="admin-heading"><div><div class="label">Управление проектом</div><h1 class="page-title">Настройки сайта</h1><p class="lead">Редактируйте содержание журнала без изменения кода.</p></div></div><div class="b settings-card">' +
-      '<section><h2>Айдентика</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Подпись в меню',s.tagline || 'Веб-журнал студентов Новосибирска') + '</section>' +
-      '<section><h2>Главная страница</h2>' + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Подзаголовок',s.home_lead,true) + '</section>' +
-      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Первый снег') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '30 ноября') + '</section>' +
+    const color = /^#[0-9a-fA-F]{6}$/.test(s.accent_color || '') ? s.accent_color : '#e5482d';
+    return '<div class="admin-page site-settings"><div class="settings-intro"><span class="eyebrow">Редактирование без кода</span><h2>Настройки «Черновика»</h2><p class="meta">Один экран для содержания и внешнего вида журнала.</p></div><div class="settings-card">' +
+      '<section><h2>Название и главная</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Короткая подпись',s.tagline || 'Веб-журнал студентов Новосибирска') + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Описание главной',s.home_lead,true) + '</section>' +
+      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Тема месяца') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '') + '</section>' +
       '<section><h2>Объявление</h2>' + field('announcement_title','Заголовок',s.announcement_title) + field('announcement_body','Текст',s.announcement_body,true) + '</section>' +
       '<section><h2>О проекте</h2>' + field('about_text','Описание проекта',s.about_text,true) + '</section>' +
-      '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
+      '<section><h2>Внешний вид</h2><div class="settings-appearance"><label class="site-field">Акцентный цвет<input id="site-accent_color" type="color" value="' + color + '"></label><label class="site-field">Цветовая тема<select id="site-site_theme"><option value="system"' + ((s.site_theme || 'system') === 'system' ? ' selected' : '') + '>Как в системе</option><option value="light"' + (s.site_theme === 'light' ? ' selected' : '') + '>Светлая</option><option value="dark"' + (s.site_theme === 'dark' ? ' selected' : '') + '>Тёмная</option></select></label></div><p class="hint">Настройки оформления применяются ко всему сайту после сохранения.</p></section>' +
+      '<div class="settings-actions"><button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div></div>';
   };
   V.manage = async () => {
     if (!canReview() && !isDemo()) return '<div class="b empty">Раздел доступен редакторам и администраторам.</div>';
@@ -438,10 +434,14 @@
   A.manageTab = (tab) => { S.manageTab = tab; render(); };
 
   A.saveSiteSettings = async () => {
-    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text'];
-    const next = {}; keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : ''; });
+    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text','accent_color','site_theme'];
+    const next = {};
+    keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : (S.site || {})[key] || ''; });
     if (!next.site_name) return toast('Укажите название сайта');
-    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; toast('Настройки сохранены'); render(); } catch (e) { fail(e); }
+    if (!/^#[0-9a-fA-F]{6}$/.test(next.accent_color)) next.accent_color = '#e5482d';
+    if (!['system','light','dark'].includes(next.site_theme)) next.site_theme = 'system';
+    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; render(); toast('Настройки сохранены'); }
+    catch (e) { fail(e); }
   };
   A.filterTeam = () => {
     const q = ($('#team-search')?.value || '').trim().toLowerCase();
@@ -540,6 +540,10 @@
     try {
       try { S.site = Object.assign({}, SITE_DEFAULTS, await DB.getSiteSettings()); } catch (settingsError) { S.site = Object.assign({}, SITE_DEFAULTS); }
       document.title = S.site.site_name || 'Черновик';
+      const accent = /^#[0-9a-fA-F]{6}$/.test(S.site.accent_color || '') ? S.site.accent_color : '#e5482d';
+      document.documentElement.style.setProperty('--acc', accent);
+      if (['light','dark'].includes(S.site.site_theme)) document.documentElement.setAttribute('data-theme', S.site.site_theme);
+      else document.documentElement.removeAttribute('data-theme');
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);
