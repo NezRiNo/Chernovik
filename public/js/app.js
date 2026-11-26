@@ -243,6 +243,13 @@
           ${w.editor_note ? `<div class="note">Редактор: ${esc(w.editor_note)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px 0"><b>Здесь появятся ваши работы</b>Отправьте первую, и редактор её прочитает.</div>'}</section></div>`;
   };
 
+  V.author = async (id) => {
+    const profile = await DB.getPublicProfile(id);
+    if (!profile) return empty('Автор не найден', 'Профиль мог быть удалён.');
+    const works = await DB.listWorks({ authorId: id, status: 'published' });
+    return `<div class="public-profile"><a class="back" href="#catalog">${ic('back','sm')}Назад в журнал</a><div class="profile-head">${avatar(avOf(profile),64)}<div><h1 class="page-title">${esc(profile.nick)}</h1><div class="meta">${esc(profile.uni || '')}</div></div></div>${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}<h2 class="section-heading">Публикации автора</h2><div class="bento">${works.length ? works.map(card).join('') : empty('Пока нет опубликованных работ','Новые публикации появятся здесь.')}</div></div>`;
+  };
+
   V.publish = async () => {
     if (!S.me) { toast('Сначала войдите или зарегистрируйтесь'); location.hash = 'register'; return ''; }
     const w = S.editId ? await DB.getWork(S.editId) : null;
@@ -548,6 +555,7 @@
     const h = location.hash.slice(1) || 'home';
     let name = h, arg = null;
     if (h.startsWith('work-')) { name = 'work'; arg = h.slice(5); }
+    if (h.startsWith('author-')) { name = 'author'; arg = h.slice(7); }
     if (['mod','admin','settings'].includes(h)) { S.manageTab = h === 'mod' ? S.tab : h === 'admin' ? 'team' : 'settings'; name = 'manage'; }
     if (!V[name]) name = 'home';
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
