@@ -276,8 +276,9 @@
     async signOut() { DB.session = null; save(); },
     async deleteAccount(id) {
       DB.works = DB.works.filter((w) => w.author_id !== id);
-      DB.comments = DB.comments.filter((c) => c.author_id !== id);
-      DB.commentReactions = (DB.commentReactions || []).filter((r) => r.user_id !== id && !DB.comments.some((c) => c.id === r.comment_id));
+      const removedComments = new Set(DB.comments.filter((c) => c.author_id === id).map((c) => c.id));
+      DB.comments = DB.comments.filter((c) => !removedComments.has(c.id) && !removedComments.has(c.parent_id));
+      DB.commentReactions = (DB.commentReactions || []).filter((r) => r.user_id !== id && DB.comments.some((c) => c.id === r.comment_id));
       DB.reactions = DB.reactions.filter((r) => r.user_id !== id);
       DB.reports = DB.reports.filter((r) => r.reporter_id !== id);
       DB.follows = (DB.follows || []).filter((f) => f.follower_id !== id && f.author_id !== id);
