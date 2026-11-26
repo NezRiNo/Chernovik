@@ -496,3 +496,5 @@ a.admin-stat:hover { border-color:var(--ink); }
   .home-month { padding:22px; }
   .manage-tabs { grid-template-columns:1fr 1fr; }
 }
+
+@media(max-width:640px) { .account-actions .btn:first-child { display:none; } .manage-content > h1.page-title { display:none; } }
