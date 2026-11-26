@@ -262,7 +262,7 @@
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
-        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" onchange="A.showSelectedFile(this)"><div class="hint">JPG, PNG или WebP до 10 МБ.</div><div id="selected-file" class="attached-file"></div>
+        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" onchange="A.showSelectedFile(this)"><div class="hint">JPG, PNG или WebP до 50 МБ.</div><div id="selected-file" class="attached-file"></div>
           ${w && w.cover_url ? `<div class="attached-file" id="attached-file"><img src="${esc(w.cover_url)}" alt="Текущая обложка"><span>Обложка прикреплена</span><button type="button" class="linkbtn" onclick="A.removeCover()">Удалить файл</button></div>` : ''}
           <div class="hint" id="cover-removed" hidden>Файл будет удалён после сохранения.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
@@ -490,7 +490,7 @@
     const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
       : !body ? 'Добавьте текст или подпись к работе' : body.length > 50000 ? 'Текст должен быть не длиннее 50 000 символов'
       : file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'Обложка должна быть в формате JPG, PNG или WebP'
-      : file && file.size > 10 * 1024 * 1024 ? 'Обложка больше 10 МБ'
+      : file && file.size > 50 * 1024 * 1024 ? 'Файл больше 50 МБ'
       : val('ptags').split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean).length > 5 ? 'Укажите не больше 5 тегов'
       : val('ptags').split(',').some((t) => t.trim().replace(/^#/, '').length > 24) ? 'Каждый тег должен быть не длиннее 24 символов'
       : !$('#pa').checked ? 'Подтвердите авторство' : '';
