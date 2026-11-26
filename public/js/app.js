@@ -18,7 +18,6 @@
     fix: ['Нужны правки', 'acc'],
     rejected: ['Отклонено', 'acc'],
   };
-  const BAD_WORDS = /(дурак|идиот|тупо|ненавижу)/i; // клиентская автопроверка; серьёзную фильтрацию делайте на сервере
 
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -411,7 +410,6 @@
     if (!S.me) return toast('Войдите, чтобы комментировать');
     if (!t) return toast('Напишите комментарий');
     if (t.length > 2000) return toast('Комментарий должен быть не длиннее 2 000 символов');
-    if (BAD_WORDS.test(t)) return toast('Комментарий не прошёл автопроверку. Переформулируйте, пожалуйста');
     const button = document.querySelector('.comment-form button[type="submit"]');
     if (button) button.disabled = true;
     try { await DB.addComment(id, t, S.me.id); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
