@@ -701,3 +701,8 @@ a.admin-stat:hover { border-color:var(--ink); }
  .editor-body { min-height:190px; }
  .preview-dialog h2 { font-size:26px; }
 }
+
+.publish-editor .prose h2 { font:400 26px/1.25 Lora,serif; margin:18px 0 10px; }
+.publish-editor .prose blockquote { margin:12px 0; padding:10px 16px; border-left:3px solid var(--acc); color:var(--mute); background:var(--paper); }
+.publish-editor .prose ul { padding-left:22px; }
+.editor-body:focus { border-color:var(--acc); outline:none; box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 12%,transparent); }
