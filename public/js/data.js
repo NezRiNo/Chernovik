@@ -261,6 +261,7 @@
       DB.comments = DB.comments.filter((c) => c.author_id !== id);
       DB.reactions = DB.reactions.filter((r) => r.user_id !== id);
       DB.reports = DB.reports.filter((r) => r.reporter_id !== id);
+      DB.follows = (DB.follows || []).filter((f) => f.follower_id !== id && f.author_id !== id);
       DB.users = DB.users.filter((u) => u.id !== id);
       DB.session = null; save();
     },
