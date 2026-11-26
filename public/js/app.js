@@ -262,7 +262,7 @@
         <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
-        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 10 МБ.</div>
+        <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" onchange="A.showSelectedFile(this)"><div class="hint">JPG, PNG или WebP до 10 МБ.</div><div id="selected-file" class="attached-file"></div>
           ${w && w.cover_url ? `<div class="attached-file" id="attached-file"><img src="${esc(w.cover_url)}" alt="Текущая обложка"><span>Обложка прикреплена</span><button type="button" class="linkbtn" onclick="A.removeCover()">Удалить файл</button></div>` : ''}
           <div class="hint" id="cover-removed" hidden>Файл будет удалён после сохранения.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
@@ -508,6 +508,8 @@
   A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
   A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
 
+  A.showSelectedFile = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span>' + esc(input.files[0].name) + '</span><button type="button" class="linkbtn" onclick="A.clearSelectedFile()">Убрать файл</button>' : ''; };
+  A.clearSelectedFile = () => { const input = $('#cv'); if (input) { input.value = ''; input.dataset.removeCover = 'true'; } const box = $('#selected-file'); if (box) box.innerHTML = ''; const note = $('#cover-removed'); if (note) note.hidden = false; };
   A.removeCover = () => { const input = $('#cv'); if (input) input.dataset.removeCover = 'true'; const current = $('#attached-file'); if (current) current.remove(); const note = $('#cover-removed'); if (note) note.hidden = false; };
   A.react = async (id, kind) => {
     if (!S.me) return toast('Войдите, чтобы оставить реакцию');
