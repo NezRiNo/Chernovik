@@ -243,3 +243,20 @@ insert into public.site_settings (id, settings) values ('main', '{
 grant select (id, settings) on table public.site_settings to anon, authenticated;
 grant insert (id, settings, updated_by) on table public.site_settings to authenticated;
 grant update (settings, updated_by, updated_at) on table public.site_settings to authenticated;
+
+
+-- Подписки на авторов
+create table if not exists public.author_follows (
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (follower_id, author_id),
+  constraint author_follows_no_self check (follower_id <> author_id)
+);
+create index if not exists author_follows_author_idx on public.author_follows(author_id);
+alter table public.author_follows enable row level security;
+create policy "follows: read counts" on public.author_follows for select to anon, authenticated using (true);
+create policy "follows: insert own" on public.author_follows for insert to authenticated with check ((select auth.uid()) = follower_id and follower_id <> author_id);
+create policy "follows: delete own" on public.author_follows for delete to authenticated using ((select auth.uid()) = follower_id);
+grant select on public.author_follows to anon, authenticated;
+grant insert, delete on public.author_follows to authenticated;
