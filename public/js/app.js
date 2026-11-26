@@ -115,7 +115,8 @@
     // [ключ, подпись в меню, подпись на телефоне, значок]
     const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
     const mod = ['mod', 'Редакция', 'Редакция', 'shield'], admin = ['admin', 'Команда', 'Команда', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
-    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin] : []), about];
+    const settings = ['settings', 'Настройки сайта', 'Настройки', 'pen'];
+    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin, settings] : []), about];
     const tab = [...base, canReview() ? mod : about, ...(isAdmin() ? [admin] : [])];
     const cur = active === 'work' ? 'catalog' : active;
     const me = S.me
@@ -331,6 +332,18 @@
     </div>`;
   };
 
+  V.settings = async () => {
+    if (!isAdmin()) return '<div class="form-wrap"><h1 class="page-title">Настройки сайта</h1><div class="b">Раздел доступен только администраторам.</div></div>';
+    const s = S.site || {};
+    const field = (id, label, value, area) => '<label class="site-field">' + label + (area ? '<textarea id="site-' + id + '" rows="3">' + esc(value || '') + '</textarea>' : '<input id="site-' + id + '" value="' + esc(value || '') + '">') + '</label>';
+    return '<div class="admin-page site-settings"><div class="admin-heading"><div><div class="label">Управление проектом</div><h1 class="page-title">Настройки сайта</h1><p class="lead">Редактируйте содержание журнала без изменения кода.</p></div></div><div class="b settings-card">' +
+      '<section><h2>Айдентика</h2>' + field('site_name','Название сайта',s.site_name || 'Черновик') + field('tagline','Подпись в меню',s.tagline || 'Веб-журнал студентов Новосибирска') + '</section>' +
+      '<section><h2>Главная страница</h2>' + field('home_label','Надзаголовок',s.home_label) + field('home_heading','Главный заголовок',s.home_heading,true) + field('home_lead','Подзаголовок',s.home_lead,true) + '</section>' +
+      '<section><h2>Тема месяца</h2>' + field('theme_title','Название темы',s.theme_title || 'Первый снег') + field('theme_description','Описание темы',s.theme_description,true) + field('theme_deadline','Срок приёма работ',s.theme_deadline || '30 ноября') + '</section>' +
+      '<section><h2>Объявление</h2>' + field('announcement_title','Заголовок',s.announcement_title) + field('announcement_body','Текст',s.announcement_body,true) + '</section>' +
+      '<section><h2>О проекте</h2>' + field('about_text','Описание проекта',s.about_text,true) + '</section>' +
+      '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
+  };
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
     <p>«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.</p>
     <p>Каждую работу читает редактор, поэтому здесь нет шума и спама. Читать можно без регистрации, публиковаться и комментировать могут зарегистрированные участники.</p></div>`;
@@ -411,6 +424,12 @@
     catch (e) { $('#er').textContent = e.message; }
   };
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
+  A.saveSiteSettings = async () => {
+    const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text'];
+    const next = {}; keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : ''; });
+    if (!next.site_name) return toast('Укажите название сайта');
+    try { await DB.saveSiteSettings(next); S.site = next; document.title = next.site_name; toast('Настройки сохранены'); render(); } catch (e) { fail(e); }
+  };
   A.filterTeam = () => {
     const q = ($('#team-search')?.value || '').trim().toLowerCase();
     const role = $('#team-filter')?.value || '';
@@ -505,6 +524,7 @@
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
     const t = ++S.tok;
     try {
+      S.site = await DB.getSiteSettings();
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);
