@@ -21,7 +21,7 @@
 
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
+  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', manageTab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
   const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Здесь студенты публикуют то, что пишут, рисуют и снимают', home_lead: 'Редактор читает каждую работу. Авторы получают читателей, а не лайки.', theme_title: 'Первый снег', theme_description: 'Тема необязательная: можно участвовать, а можно публиковать своё.', theme_deadline: '30 ноября', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
@@ -113,21 +113,18 @@
   }
 
   function shell(active, html) {
-    // [ключ, подпись в меню, подпись на телефоне, значок]
-    const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
-    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], admin = ['admin', 'Команда', 'Команда', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
-    const settings = ['settings', 'Настройки сайта', 'Настройки', 'pen'];
-    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin, settings] : []), about];
-    const tab = [...base, canReview() ? mod : about, ...(isAdmin() ? [admin] : [])];
-    const cur = active === 'work' ? 'catalog' : active;
+    const base = [['home', 'Главная', 'home'], ['catalog', 'Журнал', 'grid'], ['publish', 'Опубликовать', 'plus']];
+    const cur = ['work'].includes(active) ? 'catalog' : (['mod','admin','settings'].includes(active) ? 'manage' : active);
     const me = S.me
-      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
-      : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
-    return `<div class="shell"><aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
-      <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
-      <div class="side-foot">${me}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</div></aside>
-      <main class="main"><div class="page">${html}</div>${footer()}</main>
-      <nav class="tabbar" aria-label="Быстрая навигация">${tab.map(([k, , t, i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${t}</span></a>`).join('')}</nav></div>`;
+      ? `<a class="account-avatar" href="#profile" aria-label="Личный кабинет" title="Личный кабинет">${avatar(avOf(S.me), 42)}</a>`
+      : '<div class="account-actions"><a class="btn sm" href="#login">Войти</a><a class="btn sm p" href="#register">Регистрация</a></div>';
+    const manage = (canReview() || isDemo()) ? '<a class="manage-link" href="#manage" aria-label="Управление проектом" title="Управление проектом">'+ic('shield')+'<span>Управление</span></a>' : '';
+    return `<div class="shell">
+      <aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
+      <nav class="nav" aria-label="Основное меню">${base.map(([k,t,i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}${manage}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</nav>
+      </aside>
+      <main class="main"><header class="topbar"><div class="topbar-context">${active === 'home' ? 'Пространство для первых публикаций' : active === 'catalog' || active === 'work' ? 'Читайте и открывайте новое' : active === 'manage' || ['mod','admin','settings'].includes(active) ? 'Управление проектом' : ''}</div><div class="topbar-actions">${manage}${me}</div></header><div class="page">${html}</div>${footer()}</main>
+      <nav class="tabbar" aria-label="Быстрая навигация">${base.map(([k,t,i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${k === 'publish' ? 'Создать' : t}</span></a>`).join('')}<a href="${S.me ? '#profile' : '#login'}" class="${cur === 'profile' ? 'on' : ''}">${S.me ? avatar(avOf(S.me),24) : ic('user')}<span>Кабинет</span></a></nav></div>`;
   }
 
   /* ---------- Страницы ---------- */
@@ -137,31 +134,29 @@
     const ws = await DB.listWorks({ status: 'published' });
     const authors = new Set(ws.map((w) => w.author.id)).size;
     const unis = new Set(ws.map((w) => w.uni).filter(Boolean)).size;
-    const f = ws[0];
+    const featured = ws[0];
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
-      ? `<section class="b s12 site-announcement"><div class="label">Объявление</div>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const feat = f
-      ? `<a class="b tight s8 big-work" href="#work-${esc(f.id)}">${cover(f)}<span class="txt"><span class="meta">Новое в журнале, ${esc(f.form.toLowerCase())}</span><h3>${esc(f.title)}</h3><span class="meta">${esc(f.author.nick || '')}, ${esc(f.uni || '')}</span><span class="excerpt">${esc(f.body)}</span></span></a>`
-      : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>', 's8');
-    return `<div class="bento">
-      <section class="b hero s8"><div class="label">${esc((S.site || {}).home_label || "Веб-журнал студентов Новосибирска")}</div>
-        <h1>${esc((S.site || {}).home_heading || "Здесь студенты публикуют то, что пишут, рисуют и снимают")}</h1>
-        <p class="lead">${esc((S.site || {}).home_lead || "Редактор читает каждую работу. Авторы получают читателей, а не лайки.")}</p>
-        <div class="row"><a class="btn p big" href="#publish">Опубликовать работу</a><a class="btn big" href="#catalog">Читать журнал</a></div></section>
-      <section class="b acc s4"><div class="label">Тема месяца</div><div class="theme-title">«${esc((S.site || {}).theme_title || "Первый снег")}»</div>
-        <p>${esc((S.site || {}).theme_description || "Тема необязательная: можно участвовать, а можно публиковать своё.")} ${(S.site || {}).theme_deadline ? "Работы принимаем до " + esc(S.site.theme_deadline) + "." : ""}</p>
-        <a class="btn light" href="#publish">Участвовать</a></section>
+      ? `<section class="home-announcement"><span class="eyebrow">Новости проекта</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
+    const featuredBlock = featured
+      ? `<a class="home-feature" href="#work-${esc(featured.id)}">${cover(featured)}<span class="home-feature-copy"><span class="eyebrow">Свежая публикация · ${esc(featured.form.toLowerCase())}</span><h2>${esc(featured.title)}</h2><span class="meta">Автор: ${esc(featured.author.nick || '')} · ${esc(featured.uni || '')}</span><span class="home-feature-link">Читать работу →</span></span></a>`
+      : `<section class="home-feature home-feature-empty"><span class="eyebrow">Первая публикация</span><h2>У журнала пока чистая страница</h2><p>Станьте первым автором — поделитесь текстом, иллюстрацией или фотографией.</p><a class="btn p" href="#publish">Опубликовать работу</a></section>`;
+    return `<div class="home-page">
+      <section class="home-hero">
+        <div class="home-hero-copy"><span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
+          <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
+          <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством, найти первых читателей и открыть новые имена.')}</p>
+          <div class="home-actions"><a class="btn p big" href="#publish">Поделиться работой</a><a class="text-link" href="#catalog">Исследовать журнал <span>↗</span></a></div>
+          <div class="home-trust"><span>${ws.length} публикаций</span><i></i><span>${authors} авторов</span><i></i><span>${unis} вузов</span></div>
+        </div>
+        <div class="home-hero-art" aria-hidden="true"><div class="art-sheet art-sheet-back"></div><div class="art-sheet art-sheet-front"><span class="art-mark">ч.</span><span class="art-caption">твоя идея<br>может больше</span><span class="art-line"></span></div><span class="art-orbit"></span></div>
+      </section>
       ${announcement}
-      ${feat}
-      <section class="b ink s4"><div class="label">Журнал сейчас</div><div class="stats">
-        <div><div class="stat">${ws.length}</div><span>работ</span></div><div><div class="stat">${authors}</div><span>авторов</span></div><div><div class="stat">${unis}</div><span>вузов</span></div></div></section>
-      ${ws.length > 1 ? `<div class="section-title"><h2>Свежие работы</h2><a href="#catalog">Весь каталог</a></div>${ws.slice(1, 7).map(card).join('')}` : ''}
-      <div class="section-title"><h2>Как это работает</h2></div>
-      <div class="b step s4"><b>Отправьте работу</b><p>Зарегистрируйтесь, загрузите текст или обложку и коротко напишите о работе.</p></div>
-      <div class="b step s4"><b>Редактор читает</b><p>Мы публикуем или возвращаем с комментарием. Статус виден в вашем кабинете.</p></div>
-      <div class="b step s4"><b>Вас находят</b><p>Читатели ставят реакции и пишут комментарии, а вы видите статистику.</p></div>
-      <section class="b s6"><div class="label">Вузы Новосибирска</div><div class="chips">${UNIS.map((u) => `<button class="chip" onclick="A.byUni('${esc(u)}')">${esc(u)}</button>`).join('')}</div></section>
-      <section class="b plain s6"><div class="label">Права и условия</div><p>Все права на работы остаются у авторов. Сайт бесплатный для авторов и читателей.</p><a class="btn sm" href="#terms">Пользовательское соглашение</a></section>
+      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Первый снег')}</h2><p>${esc((S.site || {}).theme_description || 'Тема необязательная — публикуйте то, что действительно хочется.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Откликнуться на тему ↗</a></section>
+      <div class="home-section-head"><div><span class="eyebrow">Выбор редакции</span><h2>Истории, которые стоит открыть</h2></div><a class="text-link" href="#catalog">Весь журнал ↗</a></div>
+      ${featuredBlock}
+      ${ws.length > 1 ? `<div class="home-work-grid">${ws.slice(1,7).map(card).join('')}</div>` : ''}
+      <section class="home-how"><div><span class="eyebrow">Начать просто</span><h2>Твой голос —<br>твоя первая публикация.</h2><p>Не нужно ждать идеального момента. «Черновик» создан, чтобы пробовать, делиться и находить своих читателей.</p><a class="btn p" href="#publish">Начать публикацию</a></div><div class="home-steps"><article><b>01</b><div><h3>Поделись</h3><p>Загрузи текст, фото, иллюстрацию или другой творческий материал.</p></div></article><article><b>02</b><div><h3>Получи отклик</h3><p>Редактор поможет подготовить работу к публикации.</p></div></article><article><b>03</b><div><h3>Найди читателей</h3><p>Твою работу увидит сообщество студентов Новосибирска.</p></div></article></div></section>
+      <section class="home-community"><span class="eyebrow">Сообщество «Черновика»</span><h2>У каждого есть что показать.</h2><p>Открой журнал, найди вдохновение или сделай первый шаг как автор.</p><div class="home-actions"><a class="btn p" href="#publish">Опубликовать работу</a><a class="btn" href="#catalog">Перейти в каталог</a></div></section>
     </div>`;
   };
 
@@ -348,6 +343,18 @@
       '<section><h2>О проекте</h2>' + field('about_text','Описание проекта',s.about_text,true) + '</section>' +
       '<button class="btn p" onclick="A.saveSiteSettings()">Сохранить изменения</button></div></div>';
   };
+  V.manage = async () => {
+    if (!canReview() && !isDemo()) return '<div class="b empty">Раздел доступен редакторам и администраторам.</div>';
+    const tabs = [['queue','Публикации'],['reports','Жалобы'],...(isAdmin() ? [['team','Команда'],['settings','Настройки сайта']] : [])];
+    if (!tabs.some(([k]) => k === S.manageTab)) S.manageTab = 'queue';
+    const nav = tabs.map(([k,t]) => `<button class="manage-tab${S.manageTab === k ? ' on' : ''}" onclick="A.manageTab('${k}')">${t}</button>`).join('');
+    let body = '';
+    if (S.manageTab === 'queue' || S.manageTab === 'reports') { S.tab = S.manageTab; body = await V.mod(); }
+    else if (S.manageTab === 'team') body = await V.admin();
+    else if (S.manageTab === 'settings') body = await V.settings();
+    return `<div class="manage-page"><div class="manage-heading"><div><span class="eyebrow">Рабочее пространство</span><h1 class="page-title">Управление</h1><p class="lead">Всё необходимое для работы с журналом — в одном месте.</p></div></div><nav class="manage-tabs" aria-label="Разделы управления">${nav}</nav><div class="manage-content">${body}</div></div>`;
+  };
+
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
     <p>${esc((S.site || {}).about_text || "«Черновик» — веб-журнал студентов вузов Новосибирска. Мы помогаем найти аудиторию тем, кто пишет, рисует, снимает и сочиняет, но не знает, где это показать.")}</p>
     <p>Каждую работу читает редактор, поэтому здесь нет шума и спама. Читать можно без регистрации, публиковаться и комментировать могут зарегистрированные участники.</p></div>`;
@@ -428,6 +435,8 @@
     catch (e) { $('#er').textContent = e.message; }
   };
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
+  A.manageTab = (tab) => { S.manageTab = tab; render(); };
+
   A.saveSiteSettings = async () => {
     const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text'];
     const next = {}; keys.forEach((key) => { const el = $('#site-' + key); next[key] = el ? el.value.trim() : ''; });
@@ -524,6 +533,7 @@
     const h = location.hash.slice(1) || 'home';
     let name = h, arg = null;
     if (h.startsWith('work-')) { name = 'work'; arg = h.slice(5); }
+    if (['mod','admin','settings'].includes(h)) { S.manageTab = h === 'mod' ? S.tab : h === 'admin' ? 'team' : 'settings'; name = 'manage'; }
     if (!V[name]) name = 'home';
     if (name !== 'publish' && S.editId && name !== 'profile') S.editId = null;
     const t = ++S.tok;
