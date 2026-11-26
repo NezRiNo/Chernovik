@@ -27,6 +27,7 @@
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
+  const canDeleteWork = (w) => !!(S.me && w && (S.me.id === w.author_id || isAdmin()));
   const roleLabel = (role) => ({ author: 'Автор', reviewer: 'Редактор', editor: 'Редактор', admin: 'Администратор' }[role] || 'Автор');
   const isDemo = () => DB.mode === 'demo';
 
@@ -233,7 +234,7 @@
       ${pubd ? '' : `<p class="badge ${STATUS[w.status][1]}" style="display:inline-block">${STATUS[w.status][0]}</p>`}
       <div class="meta">${esc(w.form)}</div><h1 class="page-title" style="margin:4px 0 8px">${esc(w.title)}</h1>
       ${w.tags && w.tags.length ? `<div class="tags" style="margin-bottom:12px">${w.tags.map((t) => `<button class="chip tag" onclick="A.setTag('${esc(t)}');go('catalog')">${esc(t)}</button>`).join('')}</div>` : ''}
-      <div class="byline"><a href="#author-${esc(w.author_id)}" class="author-link" aria-label="Профиль автора">${avatar(avOf(w.author), 36)}</a><div class="meta"><a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a>, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div>${pubd ? followButton : ''}</div>
+      <div class="byline"><a href="#author-${esc(w.author_id)}" class="author-link" aria-label="Профиль автора">${avatar(avOf(w.author), 36)}</a><div class="meta"><a class="author-link" href="#author-${esc(w.author_id)}">${esc(w.author.nick || '')}</a>, ${esc(w.uni || 'вуз не указан')}<br>${fmtDate(w.created_at)}${pubd ? ` · <button class="linkbtn" onclick="A.report('work','${esc(id)}')">Пожаловаться на работу</button>` : ''}</div>${pubd ? followButton : ''}${canDeleteWork(w) ? `<button class="btn sm danger" onclick="A.deleteWork('${esc(id)}')">Удалить работу</button>` : ''}</div>
       ${pubd ? `<div class="article-stats"><span>${ic('eye','sm')}${safeCount(w.views)} просмотров</span><span>${ic('message','sm')}${cm.length} комментариев</span></div>` : ''}
       ${workMedia(w) || cover(w)}
       ${w.description ? `<p class="meta" style="font-style:italic">${esc(w.description)}</p>` : ''}
@@ -293,7 +294,7 @@
       <section class="b s12"><div class="label">Авторы, на которых вы подписаны</div>${following.length ? `<div class="following-list">${following.map((u) => `<a class="following-person" href="#author-${esc(u.id)}">${avatar(avOf(u),36)}<span><b>${esc(u.nick)}</b><small>${esc(u.uni || '')}</small></span></a>`).join('')}</div>` : '<p class="hint">Открывайте интересные профили и подписывайтесь — новые авторы появятся здесь.</p>'}</section>
       <section class="b s12"><div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="label" style="margin:0">Мои работы</div><a class="btn p sm" href="#publish" onclick="S_edit(null)">Опубликовать новую</a></div>
         ${ws.length ? ws.map((w) => `<div class="list-row"><a class="t" href="#work-${esc(w.id)}">${esc(w.title)}</a>
-          <div class="row"><span class="badge ${STATUS[w.status][1]}">${STATUS[w.status][0]}</span>${w.status === 'fix' ? `<button class="btn sm" onclick="A.edit('${esc(w.id)}')">Исправить</button>` : ''}</div>
+          <div class="row"><span class="badge ${STATUS[w.status][1]}">${STATUS[w.status][0]}</span>${w.status === 'fix' ? `<button class="btn sm" onclick="A.edit('${esc(w.id)}')">Исправить</button>` : ''}<button class="btn sm danger" onclick="A.deleteWork('${esc(w.id)}')">Удалить</button></div>
           ${w.editor_note ? `<div class="note">Редактор: ${esc(w.editor_note)}</div>` : ''}</div>`).join('') : '<div class="empty" style="padding:20px 0"><b>Здесь появятся ваши работы</b>Отправьте первую, и редактор её прочитает.</div>'}</section></div>`;
   };
 
@@ -548,6 +549,17 @@
     try { await DB.deleteAccount(S.me.id); S.me = null; toast('Аккаунт удалён'); go('home'); } catch (e) { fail(e); }
   };
   A.edit = (id) => { S.editId = id; go('publish'); };
+  A.deleteWork = async (id) => {
+    const w = await DB.getWork(id);
+    if (!w || !canDeleteWork(w)) return toast('Недостаточно прав для удаления этой работы');
+    if (!confirm(`Удалить работу «${w.title}»? Это действие нельзя отменить.`)) return;
+    try {
+      await DB.deleteWork(id, S.me.id);
+      toast('Работа удалена');
+      if (location.hash === `#work-${id}`) go('profile');
+      else render();
+    } catch (e) { fail(e); }
+  };
   A.submit = async () => {
     const er = $('#er'), title = val('pt'), body = val('pb');
     const files = Array.from($('#cv').files || []);

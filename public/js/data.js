@@ -137,6 +137,10 @@
       check(error);
       return data.id;
     },
+    async deleteWork(id) {
+      const { error } = await sb.from('works').delete().eq('id', id);
+      check(error);
+    },
     async setStatus(id, status, note) {
       const { error } = await sb.from('works').update({
         status, editor_note: note || null,
@@ -349,6 +353,18 @@
       }
       const n = { id: uid(), author_id: uidMe, ...base, cover_url: firstImage ? firstImage.url : null, status: 'review', views: 0, base: {}, created_at: Date.now() };
       DB.works.push(n); save(); return n.id;
+    },
+    async deleteWork(id, uidMe) {
+      const w = DB.works.find((x) => x.id === id);
+      if (!w) throw new Error('Работа не найдена');
+      const actor = user(uidMe);
+      if (!actor || (w.author_id !== uidMe && actor.role !== 'admin')) throw new Error('Недостаточно прав для удаления этой работы');
+      DB.works = DB.works.filter((x) => x.id !== id);
+      DB.comments = DB.comments.filter((x) => x.work_id !== id);
+      DB.commentReactions = (DB.commentReactions || []).filter((x) => DB.comments.some((c) => c.id === x.comment_id));
+      DB.reactions = DB.reactions.filter((x) => x.work_id !== id);
+      DB.reports = DB.reports.filter((x) => !(x.target_type === 'work' && x.target_id === id));
+      save();
     },
     async setStatus(id, status, note) {
       const w = DB.works.find((x) => x.id === id);
