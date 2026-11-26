@@ -307,7 +307,7 @@
       const own = p.id === S.me.id;
       const search = (p.nick + ' ' + (p.uni || '')).toLowerCase();
       return `<section class="team-row" data-team-search="${esc(search)}" data-team-role="${esc(p.role)}">
-        <div class="team-person">${avatar(defAv(p.nick), 42)}<div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${labels[p.role] || esc(p.role)}</div>${own ? '<span class="team-self">Это ваш аккаунт</span>' : ''}</div></div>
+        <div class="team-person">${avatar(avOf(p), 42)}<div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${labels[p.role] || esc(p.role)}</div>${own ? '<span class="team-self">Это ваш аккаунт</span>' : ''}</div></div>
         <div class="row team-controls"><select id="role-${esc(p.id)}" aria-label="Роль пользователя ${esc(p.nick)}" ${own ? 'disabled' : ''}>${roles.map((r) => `<option value="${r}"${r === p.role || (r === 'reviewer' && p.role === 'editor') ? ' selected' : ''}>${labels[r]}</option>`).join('')}</select>
         <button class="btn sm" onclick="A.setRole('${esc(p.id)}')" ${own ? 'disabled' : ''}>Сохранить</button></div>
       </section>`;
