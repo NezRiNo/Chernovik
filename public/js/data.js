@@ -146,7 +146,7 @@
     async incViews(id) { await sb.rpc('increment_views', { work_id: id }); },
 
     async listComments(workId, uid) {
-      const { data, error } = await sb.from('comments').select('*, author:profiles(nick, avatar)')
+      const { data, error } = await sb.from('comments').select('*, author:profiles!comments_author_id_fkey(nick, avatar)')
         .eq('work_id', workId).eq('hidden', false).order('created_at');
       check(error);
       const ids = (data || []).map((c) => c.id);
