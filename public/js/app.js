@@ -598,7 +598,7 @@
     try { await DB.addComment(workId, t, S.me.id, parentId); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
   };
   A.commentLike = async (commentId, liked) => {
-    if (!S.me) return toast('Войдите, чтобы поставить отметку');
+    if (!S.me) return toast('Войдите, чтобы поставить лайк');
     try { await DB.toggleCommentLike(commentId, S.me.id, liked); await render(); } catch (e) { fail(e); }
   };
 
