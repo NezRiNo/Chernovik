@@ -60,7 +60,30 @@
       const { error } = await sb.from('profiles').update(patch).eq('id', id);
       check(error);
     },
-    async getPublicProfile(id) { const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, bio').eq('id', id).maybeSingle(); check(error); return data; },
+    async getPublicProfile(id) { const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, bio').eq('id', id).maybeSingle(); check(error); return data; }, 
+    async followInfo(authorId, uid) {
+      const [{ count, error: countError }, { data, error }] = await Promise.all([
+        sb.from('author_follows').select('*', { count: 'exact', head: true }).eq('author_id', authorId),
+        uid ? sb.from('author_follows').select('author_id').eq('follower_id', uid).eq('author_id', authorId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      ]);
+      check(countError); check(error);
+      const { count: followingCount, error: followingError } = await sb.from('author_follows').select('*', { count: 'exact', head: true }).eq('follower_id', authorId);
+      check(followingError);
+      return { followers: count || 0, followingCount: followingCount || 0, following: !!data };
+    },
+    async toggleFollow(authorId, uid) {
+      if (!uid || uid === authorId) throw new Error('Нельзя подписаться на этот профиль');
+      const { data, error } = await sb.from('author_follows').select('author_id').eq('follower_id', uid).eq('author_id', authorId).maybeSingle();
+      check(error);
+      const result = data
+        ? await sb.from('author_follows').delete().eq('follower_id', uid).eq('author_id', authorId)
+        : await sb.from('author_follows').insert({ follower_id: uid, author_id: authorId });
+      check(result.error);
+    },
+    async listFollowing(uid) {
+      const { data, error } = await sb.from('author_follows').select('author:profiles!author_follows_author_id_fkey(id,nick,uni,avatar)').eq('follower_id', uid).order('created_at', { ascending: false });
+      check(error); return (data || []).map((x) => x.author).filter(Boolean);
+    },
     async listProfiles() {
       const { data, error } = await sb.from('profiles').select('id, nick, uni, avatar, role, created_at').order('created_at');
       check(error);
@@ -204,6 +227,7 @@
       { id: 'c2', work_id: 'w1', author_id: 'ed', body: 'Зацепило. Особенно финал.', hidden: false, created_at: Date.now() - day / 2 },
     ],
     reactions: [],
+    follows: [],
     reports: [{ id: 'r1', reporter_id: 'u1', target_type: 'comment', target_id: 'c2', reason: 'Другое', note: 'Пример жалобы для демонстрации', status: 'new', created_at: Date.now() - 3600e3 }],
   });
 
@@ -242,6 +266,20 @@
     },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
     async getPublicProfile(id) { const u = user(id); return u ? pub(u) : null; },
+    async followInfo(authorId, uidMe) {
+      const follows = DB.follows || [];
+      return { followers: follows.filter((x) => x.author_id === authorId).length, followingCount: follows.filter((x) => x.follower_id === authorId).length, following: !!(uidMe && follows.some((x) => x.author_id === authorId && x.follower_id === uidMe)) };
+    },
+    async toggleFollow(authorId, uidMe) {
+      if (!uidMe || uidMe === authorId) throw new Error('Нельзя подписаться на этот профиль');
+      DB.follows = DB.follows || [];
+      const i = DB.follows.findIndex((x) => x.author_id === authorId && x.follower_id === uidMe);
+      if (i >= 0) DB.follows.splice(i,1); else DB.follows.push({ author_id: authorId, follower_id: uidMe, created_at: Date.now() });
+      save();
+    },
+    async listFollowing(uidMe) {
+      return (DB.follows || []).filter((x) => x.follower_id === uidMe).map((x) => pub(user(x.author_id))).filter(Boolean);
+    },
     async listProfiles() { return DB.users.map(({ id, nick, uni, avatar, role, created_at }) => ({ id, nick, uni, avatar, role, created_at })); },
     async getSiteSettings() { return DB.siteSettings || {}; },
     async saveSiteSettings(settings) { if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав'); DB.siteSettings = { ...settings }; save(); },
