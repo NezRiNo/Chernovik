@@ -161,7 +161,6 @@
         </div>
         <div class="home-hero-art" aria-hidden="true"><div class="art-sheet art-sheet-back"></div><div class="art-sheet art-sheet-front"><span class="art-mark">ч.</span><span class="art-caption">твоя идея<br>может больше</span><span class="art-line"></span></div><span class="art-orbit"></span></div>
       </section>
-      <section class="home-month"><div class="home-month-copy"><span class="eyebrow">Тема месяца</span><h2>${esc((S.site || {}).theme_title || 'Тема месяца')}</h2><p>${esc((S.site || {}).theme_description || 'Публикуйте то, что хочется показать читателям.')}</p>${(S.site || {}).theme_deadline ? `<span class="month-deadline">Приём работ до ${esc(S.site.theme_deadline)}</span>` : ''}</div><a class="btn light" href="#publish">Участвовать ↗</a></section>
       ${announcement}
       ${works}
     </div>`;
