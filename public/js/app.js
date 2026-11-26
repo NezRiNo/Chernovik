@@ -22,7 +22,7 @@
   const $ = (s) => document.querySelector(s);
   const safeCount = (value) => { const n = Number(value); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; };
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', manageTab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
+  const S = { me: null, form: '', homeForm: '', uni: '', tag: '', tab: 'queue', manageTab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
   const SITE_DEFAULTS = { site_name: 'Черновик', tagline: 'Веб-журнал студентов Новосибирска', home_label: 'Веб-журнал студентов Новосибирска', home_heading: 'Идеи заслуживают быть увиденными.', home_lead: '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.', theme_title: 'Тема месяца', theme_description: 'Публикуйте то, что хочется показать читателям.', theme_deadline: '', announcement_title: '', announcement_body: '', about_text: '«Черновик» — веб-журнал студентов вузов Новосибирска.', accent_color: '#e5482d', site_theme: 'system' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
@@ -146,33 +146,46 @@
   const V = {};
 
   V.home = async () => {
-    const ws = await DB.listWorks({ status: 'published', limit: 6 });
-    const authors = new Set(ws.map((w) => w.author.id)).size;
+    const all = await DB.listWorks({ status: 'published', limit: 14 });
+    const ws = S.homeForm ? all.filter((w) => w.form === S.homeForm) : all;
+    const featured = ws[0];
+    const items = ws.slice(1, 5);
+    const authors = [...new Map(all.filter((w) => w.author && w.author.id !== (S.me && S.me.id)).map((w) => [w.author.id, w.author])).values()].slice(0, 3);
+    const followStates = await Promise.all(authors.map((author) => DB.followInfo(author.id, S.me && S.me.id).catch(() => ({ following: false }))));
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const posts = ws.length ? ws.map((w) => {
+    const postCard = (w, featuredCard = false) => {
       const image = safeUrl(w.cover_url);
       const icon = CARD_ICONS[w.form] || 'pen';
-      return `<a class="home-post" href="#work-${esc(w.id)}">
-        <span class="home-post-thumb">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
-        <span class="home-post-copy"><span class="home-post-type">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="home-post-author">${esc(w.author.nick || 'Автор')} · ${esc(w.uni || 'вуз не указан')}</span></span>
-        <span class="home-post-stats"><span>${ic('eye','sm')}${safeCount(w.views)}</span><span>${ic('heart','sm')}${safeCount(w.counts && w.counts.like)}</span></span>
-        <span class="home-post-arrow" aria-hidden="true">↗</span>
+      const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
+      return `<a class="discover-work${featuredCard ? ' discover-featured' : ''}" href="#work-${esc(w.id)}">
+        <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
+        <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}</span></span>
       </a>`;
-    }).join('') : `<div class="home-list-empty"><b>Здесь начинается журнал</b><p>Опубликуйте первую работу — и она появится в этой ленте.</p><a class="btn p" href="#publish">Опубликовать работу</a></div>`;
-    return `<div class="home-page home-redesign">
-      <section class="home-intro">
-        <div><span class="eyebrow">${esc((S.site || {}).home_label || 'Веб-журнал студентов Новосибирска')}</span>
-        <h1>${esc((S.site || {}).home_heading || 'Идеи заслуживают быть увиденными.')}</h1>
-        <p>${esc((S.site || {}).home_lead || '«Черновик» — место, где можно поделиться творчеством и найти первых читателей.')}</p></div>
-        <a class="btn p home-intro-cta" href="#publish">${ic('plus')}<span>Новая публикация</span></a>
+    };
+    const authorList = authors.length ? authors.map((author, i) => `<div class="discover-author-row">
+      <a class="discover-author-person" href="#author-${esc(author.id)}">${avatar(avOf(author), 38)}<span><strong>${esc(author.nick || 'Автор')}</strong><small>${esc(author.uni || 'Автор Черновика')}</small></span></a>
+      ${S.me && S.me.id === author.id ? '' : `<button class="btn sm discover-follow" onclick="A.toggleFollow('${esc(author.id)}')">${followStates[i].following ? 'Вы подписаны' : 'Подписаться'}</button>`}
+    </div>`).join('') : '<p class="meta">Новые авторы скоро появятся здесь.</p>';
+    return `<div class="home-page home-discover">
+      <section class="discover-heading">
+        <div><span class="eyebrow">Веб-журнал студентов</span><h1>Творчество начинается здесь</h1><p>Публикуй свои работы. Находи вдохновение. Делись идеями.</p></div>
+        <a class="btn p" href="#publish">${ic('plus')}<span>Создать</span></a>
       </section>
       ${announcement}
-      <section class="home-feed">
-        <div class="home-feed-head"><div><span class="eyebrow">Свежие публикации</span><h2>В журнале</h2></div><div class="home-feed-count">${ws.length} работ · ${authors} авторов</div><a class="text-link" href="#catalog">Весь журнал ↗</a></div>
-        <div class="home-post-list">${posts}</div>
-      </section>
-      <div class="home-bottom-note"><span>Есть чем поделиться?</span><a href="#publish">Расскажите свою историю ↗</a></div>
+      <div class="discover-layout">
+        <main class="discover-main">
+          <nav class="discover-filters" aria-label="Фильтр по типу публикации">
+            ${['', ...FORMS].map((f) => `<button class="chip${(S.homeForm || '') === f ? ' on' : ''}" onclick="A.homeFilter('${esc(f)}')">${f || 'Все'}</button>`).join('')}
+          </nav>
+          ${featured ? `<section class="discover-featured-wrap"><div class="discover-section-head"><h2>${S.homeForm ? esc(S.homeForm) : 'Выбор редакции'}</h2><a class="text-link" href="#catalog">Весь журнал ↗</a></div>${postCard(featured, true)}</section>` : `<div class="home-list-empty"><b>Пока нет публикаций в этой категории</b><p>Попробуйте другой фильтр или загляните в журнал позже.</p><button class="btn" onclick="A.homeFilter('')">Показать все работы</button></div>`}
+          ${items.length ? `<section class="discover-grid-wrap"><div class="discover-section-head"><h2>Ещё можно открыть</h2><a class="text-link" href="#catalog">Все работы ↗</a></div><div class="discover-grid">${items.map((w) => postCard(w)).join('')}</div></section>` : ''}
+        </main>
+        <aside class="discover-aside">
+          <section class="discover-authors"><div class="discover-section-head"><h2>Авторы недели</h2><a class="text-link" href="#catalog">Все ↗</a></div>${authorList}</section>
+          <section class="discover-invite"><span class="discover-spark">${ic('spark')}</span><h3>Твоя работа — часть журнала</h3><p>Поделись тем, что создаёшь, и найди своих читателей.</p><a class="btn p" href="#publish">Опубликовать работу</a></section>
+        </aside>
+      </div>
     </div>`;
   };
 
@@ -472,6 +485,7 @@
   window.S_edit = (id) => { S.editId = id; };
   A.go = go;
   A.setForm = (f) => { S.form = f; render(); };
+  A.homeFilter = (f) => { S.homeForm = f; render(); };
   A.setUni = (u) => { S.uni = u; render(); };
   A.setTag = (tag) => { S.tag = tag; render(); };
   A.toggleFollow = async (authorId) => { if(!S.me) return go('login'); try { await DB.toggleFollow(authorId,S.me.id); await render(); } catch(e) { fail(e); } };
