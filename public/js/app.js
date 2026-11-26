@@ -121,7 +121,7 @@
     const me = S.me
       ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
       : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
-    return `<div class="shell"><aside class="side"><a class="brand" href="#home">Черновик<small>Веб-журнал студентов Новосибирска</small></a>
+    return `<div class="shell"><aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>Черновик<small>Веб-журнал студентов Новосибирска</small></span></a>
       <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
       <div class="side-foot">${me}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</div></aside>
       <main class="main"><div class="page">${html}</div>${footer()}</main>
