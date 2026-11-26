@@ -246,7 +246,7 @@
       <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
         <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
-        <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
+        <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="cv">Обложка</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp"><div class="hint">JPG, PNG или WebP до 2 МБ. Без обложки подставим рисунок по умолчанию.</div></div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
@@ -376,7 +376,9 @@
   A.submit = async () => {
     const er = $('#er'), title = val('pt'), body = val('pb');
     const file = $('#cv').files[0];
-    const bad = !title ? 'Добавьте название' : !body ? 'Добавьте текст или подпись к работе'
+    const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
+      : !body ? 'Добавьте текст или подпись к работе' : body.length > 50000 ? 'Текст должен быть не длиннее 50 000 символов'
+      : file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ? 'Обложка должна быть в формате JPG, PNG или WebP'
       : file && file.size > 2 * 1024 * 1024 ? 'Обложка больше 2 МБ'
       : !$('#pa').checked ? 'Подтвердите авторство' : '';
     if (bad) { er.textContent = bad; return; }
