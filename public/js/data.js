@@ -60,6 +60,15 @@
       const { error } = await sb.from('profiles').update(patch).eq('id', id);
       check(error);
     },
+    async listProfiles() {
+      const { data, error } = await sb.from('profiles').select('id, nick, uni, role, created_at').order('created_at');
+      check(error);
+      return data || [];
+    },
+    async setProfileRole(id, role) {
+      const { error } = await sb.rpc('set_profile_role', { target_profile: id, new_role: role });
+      check(error);
+    },
 
     _work(r) { return { ...r, author: r.author || {}, counts: countKinds(r.reactions) }; },
     async listWorks(o = {}) {
@@ -167,7 +176,8 @@
     users: [
       { id: 'u1', nick: 'mila_writes', uni: 'НГУ', bio: 'Пишу короткую прозу о городе и людях.', socials: { telegram: '@mila_writes' }, role: 'author', password: 'demo1234' },
       { id: 'u2', nick: 'artem_l', uni: 'НГТУ (НЭТИ)', bio: '', socials: {}, role: 'author', password: 'demo1234' },
-      { id: 'ed', nick: 'redaktor', uni: 'НГУ', bio: 'Редакция журнала', socials: {}, role: 'editor', password: 'demo1234' },
+      { id: 'ed', nick: 'redaktor', uni: 'НГУ', bio: 'Редакция журнала', socials: {}, role: 'reviewer', password: 'demo1234' },
+      { id: 'adm', nick: 'admin_demo', uni: 'НГУ', bio: 'Демо-администратор', socials: {}, role: 'admin', password: 'demo1234' },
     ],
     works: [
       { id: 'w1', author_id: 'u1', title: 'Последняя маршрутка до Академа', form: 'Проза', uni: 'НГУ', status: 'published', views: 1240, base: { like: 24, hit: 12, more: 7 }, created_at: Date.now() - 2 * day, description: 'Рассказ о ночной дороге домой.',
@@ -222,6 +232,16 @@
       DB.session = null; save();
     },
     async updateProfile(id, patch) { Object.assign(user(id), patch); save(); },
+    async listProfiles() { return DB.users.map(({ id, nick, uni, role, created_at }) => ({ id, nick, uni, role, created_at })); },
+    async setProfileRole(id, role) {
+      if (!user(DB.session) || user(DB.session).role !== 'admin') throw new Error('Недостаточно прав');
+      if (!['author', 'reviewer', 'admin'].includes(role)) throw new Error('Неизвестная роль');
+      if (id === DB.session) throw new Error('Нельзя менять собственную роль');
+      const target = user(id);
+      if (!target) throw new Error('Пользователь не найден');
+      if (target.role === 'admin' && role !== 'admin' && DB.users.filter((u) => u.role === 'admin').length <= 1) throw new Error('Нельзя снять роль с последнего администратора');
+      target.role = role; save();
+    },
 
     _work(w) {
       const mine = DB.reactions.filter((r) => r.work_id === w.id);
