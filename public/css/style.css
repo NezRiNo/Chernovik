@@ -298,3 +298,15 @@ textarea { resize: vertical; line-height: 1.55; }
   .tabbar a { font-size: 10px; }
   .btn { padding-inline: 14px; }
 }
+
+
+/* ---------- Публикации: теги и комментарии ---------- */
+.tags { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.chip.tag { font-size:12px; line-height:1.4; padding:4px 8px; pointer-events:none; }
+button.chip.tag { pointer-events:auto; }
+.comment-form { display:grid; gap:10px; margin:12px 0 18px; }
+.comment-form textarea { width:100%; min-height:88px; resize:vertical; }
+.comment-actions { align-items:center; justify-content:space-between; gap:12px; }
+.comment-actions .hint { margin:0; }
+.comment-form button:disabled { opacity:.55; cursor:not-allowed; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
