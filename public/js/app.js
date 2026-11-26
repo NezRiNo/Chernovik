@@ -556,7 +556,7 @@
     try {
       await DB.deleteWork(id, S.me.id);
       toast('Работа удалена');
-      if (location.hash === `#work-${id}`) go('profile');
+      if (location.hash === `#work-${id}`) go(S.me.id === w.author_id ? 'profile' : 'catalog');
       else render();
     } catch (e) { fail(e); }
   };
