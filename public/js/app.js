@@ -232,6 +232,7 @@
     const views = ws.reduce((a, w) => a + (w.views || 0), 0);
     const reacts = ws.reduce((a, w) => a + w.counts.like + w.counts.hit + w.counts.more, 0);
     const soc = S.me.socials || {};
+    const following = await DB.listFollowing(S.me.id);
     return `<div class="bento">
       <section class="b ink s4" style="align-self:start"><div class="row" style="margin-bottom:22px">${avatar(avOf(S.me), 64)}
         <div style="min-width:0"><div style="font:26px/1.2 Lora,serif;word-break:break-word">${esc(S.me.nick)}</div><div style="opacity:.7">${esc(S.me.uni || '')}</div></div></div>
@@ -246,6 +247,7 @@
           <div class="field"><label for="bh">Behance</label><input id="bh" value="${esc(soc.behance || '')}" placeholder="behance.net/..."></div></div>
         <div class="row"><button class="btn p" onclick="A.saveProfile()">Сохранить профиль</button><button class="btn" onclick="A.logout()">Выйти из аккаунта</button></div>
         <p class="hint" style="margin-top:16px">Не указывайте в профиле настоящие имя, телефон и другие личные данные: всё, что вы напишете в «О себе» и ссылках, видно всем. <button class="linkbtn" onclick="A.delAccount()">Удалить аккаунт</button></p></section>
+      <section class="b s12"><div class="label">Авторы, на которых вы подписаны</div>${following.length ? `<div class="following-list">${following.map((u) => `<a class="following-person" href="#author-${esc(u.id)}">${avatar(avOf(u),36)}<span><b>${esc(u.nick)}</b><small>${esc(u.uni || '')}</small></span></a>`).join('')}</div>` : '<p class="hint">Открывайте интересные профили и подписывайтесь — новые авторы появятся здесь.</p>'}</section>
       <section class="b s12"><div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="label" style="margin:0">Мои работы</div><a class="btn p sm" href="#publish" onclick="S_edit(null)">Опубликовать новую</a></div>
         ${ws.length ? ws.map((w) => `<div class="list-row"><a class="t" href="#work-${esc(w.id)}">${esc(w.title)}</a>
           <div class="row"><span class="badge ${STATUS[w.status][1]}">${STATUS[w.status][0]}</span>${w.status === 'fix' ? `<button class="btn sm" onclick="A.edit('${esc(w.id)}')">Исправить</button>` : ''}</div>
@@ -256,7 +258,11 @@
     const profile = await DB.getPublicProfile(id);
     if (!profile) return empty('Автор не найден', 'Профиль мог быть удалён.');
     const works = await DB.listWorks({ authorId: id, status: 'published' });
-    return `<div class="public-profile"><a class="back" href="#catalog">${ic('back','sm')}Назад в журнал</a><div class="profile-head">${avatar(avOf(profile),64)}<div><h1 class="page-title">${esc(profile.nick)}</h1><div class="meta">${esc(profile.uni || '')}</div></div></div>${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}<h2 class="section-heading">Публикации автора</h2><div class="bento">${works.length ? works.map(card).join('') : empty('Пока нет опубликованных работ','Новые публикации появятся здесь.')}</div></div>`;
+    const follow = await DB.followInfo(id, S.me && S.me.id);
+    const followButton = S.me && S.me.id !== id
+      ? `<button class="btn ${follow.following ? '' : 'p'} sm" onclick="A.toggleFollow('${esc(id)}')">${follow.following ? 'Вы подписаны · Отписаться' : 'Подписаться'}</button>`
+      : !S.me ? '<a class="btn p sm" href="#login">Войти, чтобы подписаться</a>' : '';
+    return `<div class="public-profile"><a class="back" href="#catalog">${ic('back','sm')}Назад в журнал</a><div class="profile-head">${avatar(avOf(profile),64)}<div><h1 class="page-title">${esc(profile.nick)}</h1><div class="meta">${esc(profile.uni || '')}</div></div></div><div class="author-follow-row"><div class="author-follow-stats"><span><b>${follow.followers}</b> подписчиков</span><span><b>${follow.followingCount}</b> подписок</span></div>${followButton}</div>${profile.bio ? `<p class="profile-bio">${esc(profile.bio)}</p>` : ''}<h2 class="section-heading">Публикации автора</h2><div class="bento">${works.length ? works.map(card).join('') : empty('Пока нет опубликованных работ','Новые публикации появятся здесь.')}</div></div>`;
   };
 
   V.publish = async () => {
@@ -265,16 +271,16 @@
     const knownWorks = await DB.listWorks();
     const knownTags = [...new Set(knownWorks.flatMap((x) => x.tags || []))].sort((a,b) => a.localeCompare(b,'ru'));
     return `<h1 class="page-title">${w ? 'Правки к работе' : 'Новая работа'}</h1><div class="bento">
-      <section class="b s7"><div class="field"><label for="pt">Название</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Как называется работа"></div>
+      <section class="b s7 publish-editor"><div class="editor-progress"><span class="eyebrow">Новая публикация</span><span class="hint">Поля со звёздочкой обязательны</span></div><div class="field"><label for="pt">Название *</label><input id="pt" maxlength="140" value="${esc(w ? w.title : '')}" placeholder="Придумайте название"></div>
         <div class="grid2"><div class="field"><label for="pf">Форма</label><select id="pf">${options(FORMS, w && w.form)}</select></div>
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
-        <div class="field"><label for="pb">Текст работы</label><textarea id="pb" rows="10" maxlength="50000" placeholder="Вставьте текст. Для иллюстрации, фото или музыки напишите подпись или ссылку.">${esc(w ? w.body : '')}</textarea></div>
+        <div class="field"><div class="editor-field-head"><label for="pb">Содержание *</label><span id="body-count" class="hint">0 / 50 000</span></div><div class="editor-toolbar" role="toolbar" aria-label="Форматирование текста"><button type="button" onclick="A.formatText('**','**')" title="Полужирный"><b>B</b></button><button type="button" onclick="A.formatText('_','_')" title="Курсив"><i>I</i></button><button type="button" onclick="A.formatText('## ','')" title="Заголовок">H</button><button type="button" onclick="A.formatText('> ','')" title="Цитата">“</button><button type="button" onclick="A.formatText('- ','')" title="Список">☷</button><span class="toolbar-spacer"></span><button type="button" class="toolbar-preview" onclick="A.previewWork()" title="Предпросмотр">Предпросмотр</button></div><textarea id="pb" class="editor-body" rows="12" maxlength="50000" oninput="A.updateBodyCount()" placeholder="Начните с главной мысли…\n\nРазделяйте абзацы пустой строкой. Можно использовать кнопки форматирования.">${esc(w ? w.body : '')}</textarea><div class="hint" id="form-hint">Текст, описание или подпись к вашей работе.</div></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
         <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
-        <div class="field"><label for="cv">Изображения</label><input id="cv" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="A.showSelectedFiles(this)"><div class="hint">До 8 изображений, JPG, PNG или WebP. Не более 50 МБ на файл.</div><div id="selected-file" class="attached-file"></div>
+        <div class="field editor-upload"><label for="cv">Изображения</label><label class="upload-drop" for="cv"><span class="upload-icon">＋</span><b>Добавить изображения</b><small>JPG, PNG или WebP · до 8 файлов</small></label><input id="cv" class="visually-hidden-file" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="A.showSelectedFiles(this)"><div class="hint">До 8 изображений, JPG, PNG или WebP. Не более 50 МБ на файл.</div><div id="selected-file" class="attached-file"></div>
           ${w && (w.attachments || []).some((x) => x.type === 'image') ? `<div class="existing-media"><span>В работе уже есть изображения — они сохранятся.</span></div>` : w && w.cover_url ? '<div class="existing-media">Текущая обложка сохранится.</div>' : ''}
         </div>
-        <div class="field"><label for="af">Музыка или аудио</label><input id="af" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/webm,audio/flac" onchange="A.showSelectedAudio(this)"><div class="hint">Один аудиофайл до 50 МБ. Читатели смогут слушать его прямо на странице работы.</div><div id="selected-audio" class="attached-file"></div>
+        <div class="field editor-upload"><label for="af">Музыка или аудио</label><label class="upload-drop upload-audio" for="af"><span class="upload-icon">♫</span><b>Прикрепить аудио</b><small>MP3, M4A, AAC, OGG, WAV, WebM или FLAC</small></label><input id="af" class="visually-hidden-file" type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/webm,audio/flac" onchange="A.showSelectedAudio(this)"><div class="hint">Один аудиофайл до 50 МБ. Читатели смогут слушать его прямо на странице работы.</div><div id="selected-audio" class="attached-file"></div>
           ${w && (w.attachments || []).some((x) => x.type === 'audio') ? '<div class="existing-media">Текущая аудиозапись сохранится. Новая заменит её.</div>' : ''}
         </div>
         <label class="check"><input id="pa" type="checkbox"><span>Подтверждаю, что я автор этой работы и имею право её публиковать</span></label>
@@ -438,6 +444,8 @@
   A.setForm = (f) => { S.form = f; render(); };
   A.setUni = (u) => { S.uni = u; render(); };
   A.setTag = (tag) => { S.tag = tag; render(); };
+  A.toggleFollow = async (authorId) => { if(!S.me) return go('login'); try { await DB.toggleFollow(authorId,S.me.id); await render(); } catch(e) { fail(e); } };
+
   A.byUni = (u) => { S.uni = u; S.form = ''; S.tag = ''; go('catalog'); };
   A.tab = (t) => { S.tab = t; render(); };
 
@@ -516,7 +524,9 @@
     if (knownTags.size + tags.filter((tag) => !knownTags.has(tag)).length > 30) { er.textContent = 'Достигнут лимит в 30 разных тегов. Выберите существующие.'; return; }
     $('#go').disabled = true;
     try {
-      await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags }, files, audio, S.me.id);
+      const form = val('pf');
+      if (!form) { er.textContent = 'Выберите формат работы'; $('#go').disabled = false; return; }
+            await DB.saveWork({ id: S.editId, title, form: val('pf'), uni: val('pu') || null, body, description: val('pd'), tags }, files, audio, S.me.id);
       S.editId = null; toast('Отправлено на модерацию'); go('profile');
     } catch (e) { er.textContent = e.message; $('#go').disabled = false; }
   };
@@ -524,8 +534,12 @@
   A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
   A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
 
-  A.showSelectedFiles = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = Array.from(input.files || []).map((file) => '<span>' + esc(file.name) + ' · ' + (file.size / 1048576).toFixed(1) + ' МБ</span>').join(''); };
-  A.showSelectedAudio = (input) => { const box = $('#selected-audio'); if (!box) return; box.textContent = input.files && input.files[0] ? input.files[0].name + ' · ' + (input.files[0].size / 1048576).toFixed(1) + ' МБ' : ''; };
+  A.showSelectedFiles = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = Array.from(input.files || []).map((file) => '<span class="selected-attachment">▧ ' + esc(file.name) + ' · ' + (file.size / 1048576).toFixed(1) + ' МБ</span>').join(''); };
+  A.showSelectedAudio = (input) => { const box = $('#selected-audio'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span class="selected-attachment">♫ ' + esc(input.files[0].name) + ' · ' + (input.files[0].size / 1048576).toFixed(1) + ' МБ</span>' : ''; };
+  A.formatText = (before, after) => { const field=$('#pb'); if(!field)return; const a=field.selectionStart,b=field.selectionEnd, value=field.value; const selected=value.slice(a,b)||'текст'; field.value=value.slice(0,a)+before+selected+after+value.slice(b); field.focus(); field.setSelectionRange(a+before.length,a+before.length+selected.length); A.updateBodyCount(); };
+  A.updateBodyCount = () => { const field=$('#pb'), count=$('#body-count'); if(field&&count) count.textContent=field.value.length.toLocaleString('ru-RU')+' / 50 000'; };
+  A.previewWork = () => { const title=val('pt')||'Без названия', body=val('pb'); const safe=esc(body).replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>').replace(/^[-*] (.+)$/gm,'<li>$1</li>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_(.+?)_/g,'<em>$1</em>').split(/\n{2,}/).map(p=>p.startsWith('<h3>')||p.startsWith('<blockquote>')||p.startsWith('<li>')?p:`<p>${p.replace(/\n/g,'<br>')}</p>`).join(''); $('#modal').innerHTML=`<div class="ov" onclick="if(event.target===this)A.close()"><div class="dialog preview-dialog"><div class="label">Предпросмотр публикации</div><h2>${esc(title)}</h2><div class="prose">${safe||'<p>Здесь появится ваш текст.</p>'}</div><button class="btn p" onclick="A.close()">Продолжить редактирование</button></div></div>`; };
+
   A.react = async (id, kind) => {
     if (!S.me) return toast('Войдите, чтобы оставить реакцию');
     try {
