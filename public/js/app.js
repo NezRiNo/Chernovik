@@ -21,11 +21,11 @@
 
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null };
+  const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null, teamQuery: '', teamRole: '' };
   const A = (window.A = {});
   const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
   const isAdmin = () => !!(S.me && S.me.role === 'admin');
-  const roleLabel = (role) => ({ author: 'Автор', reviewer: 'Проверщик', editor: 'Проверщик', admin: 'Администратор' }[role] || 'Автор');
+  const roleLabel = (role) => ({ author: 'Автор', reviewer: 'Редактор', editor: 'Редактор', admin: 'Администратор' }[role] || 'Автор');
   const isDemo = () => DB.mode === 'demo';
 
   const CFG = window.APP_CONFIG || {};
@@ -293,15 +293,42 @@
 
   V.admin = async () => {
     if (!isAdmin()) return `<div class="form-wrap"><h1 class="page-title">Команда</h1><div class="b"><p>Раздел доступен только администраторам.</p></div></div>`;
-    const people = await DB.listProfiles();
-    const labels = { author: 'Автор', reviewer: 'Проверщик', admin: 'Администратор', editor: 'Проверщик (старая роль)' };
+    const [people, queue, reports] = await Promise.all([
+      DB.listProfiles(), DB.listWorks({ status: 'review' }), DB.listReports()
+    ]);
+    const counts = {
+      authors: people.filter((p) => p.role === 'author').length,
+      editors: people.filter((p) => ['reviewer', 'editor'].includes(p.role)).length,
+      admins: people.filter((p) => p.role === 'admin').length,
+    };
+    const labels = { author: 'Автор', reviewer: 'Редактор', admin: 'Администратор', editor: 'Редактор' };
     const roles = ['author', 'reviewer', 'admin'];
-    return `<div class="form-wrap"><h1 class="page-title">Команда и роли</h1>
-      <p class="lead">Назначайте проверщиков и администраторов только тем, кому доверяете доступ к материалам и управлению сайтом.</p>
-      <div class="b review s12">${people.map((p) => `<section class="team-row"><div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${esc(labels[p.role] || p.role)}</div></div>
-        <div class="row"><select id="role-${esc(p.id)}" aria-label="Роль пользователя ${esc(p.nick)}">${roles.map((r) => `<option value="${r}"${r === p.role ? ' selected' : ''}>${labels[r]}</option>`).join('')}</select>
-        <button class="btn sm" onclick="A.setRole('${esc(p.id)}')">Сохранить</button></div></section>`).join('')}</div>
-      <p class="hint">Не меняйте собственную роль. Для первого администратора используйте одноразовую SQL-команду из инструкции по настройке Supabase.</p></div>`;
+    const rows = people.map((p) => {
+      const own = p.id === S.me.id;
+      const search = (p.nick + ' ' + (p.uni || '')).toLowerCase();
+      return `<section class="team-row" data-team-search="${esc(search)}" data-team-role="${esc(p.role)}">
+        <div class="team-person">${avatar(defAv(p.nick), 42)}<div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${labels[p.role] || esc(p.role)}</div>${own ? '<span class="team-self">Это ваш аккаунт</span>' : ''}</div></div>
+        <div class="row team-controls"><select id="role-${esc(p.id)}" aria-label="Роль пользователя ${esc(p.nick)}" ${own ? 'disabled' : ''}>${roles.map((r) => `<option value="${r}"${r === p.role || (r === 'reviewer' && p.role === 'editor') ? ' selected' : ''}>${labels[r]}</option>`).join('')}</select>
+        <button class="btn sm" onclick="A.setRole('${esc(p.id)}')" ${own ? 'disabled' : ''}>Сохранить</button></div>
+      </section>`;
+    }).join('');
+    return `<div class="admin-page">
+      <div class="admin-heading"><div><div class="label">Управление проектом</div><h1 class="page-title">Команда</h1><p class="lead">Роли, доступы и состояние редакции — в одном месте.</p></div></div>
+      <div class="admin-stats">
+        <a class="b admin-stat" href="#mod"><span class="meta">На проверке</span><strong>${queue.length}</strong><span class="hint">Открыть редакцию →</span></a>
+        <a class="b admin-stat" href="#mod"><span class="meta">Новые жалобы</span><strong>${reports.length}</strong><span class="hint">Перейти к жалобам →</span></a>
+        <div class="b admin-stat"><span class="meta">Участники</span><strong>${people.length}</strong><span class="hint">${counts.authors} авторов · ${counts.editors} редакторов · ${counts.admins} администраторов</span></div>
+      </div>
+      <section class="b admin-team">
+        <div class="admin-section-head"><div><h2>Участники и доступы</h2><p class="meta">Назначайте роль отдельно для каждого аккаунта.</p></div><span class="badge mute">${people.length} всего</span></div>
+        <div class="admin-filters">
+          <input id="team-search" type="search" placeholder="Найти по нику или вузу" oninput="A.filterTeam()">
+          <select id="team-filter" aria-label="Фильтр по роли" onchange="A.filterTeam()"><option value="">Все роли</option><option value="author">Авторы</option><option value="reviewer">Редакторы</option><option value="admin">Администраторы</option></select>
+        </div>
+        <div id="team-list">${rows || '<div class="hint">Пока нет участников.</div>'}</div>
+        <p class="hint admin-footnote">Редактор может проверять публикации и жалобы. Администратор дополнительно управляет ролями. Выдавайте права администратора только тем, кому полностью доверяете.</p>
+      </section>
+    </div>`;
   };
 
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
@@ -383,8 +410,23 @@
     try { S.me = await DB.signIn({ nick: val('lm'), password: $('#lp').value }); toast('Вы вошли'); go('profile'); }
     catch (e) { $('#er').textContent = e.message; }
   };
-  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как проверщик (демо)'); render(); };
-  A.setRole = async (id) => { const select = $('#role-' + id); if (!select) return; try { await DB.setProfileRole(id, select.value); toast('Роль обновлена'); render(); } catch (e) { fail(e); } };
+  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
+  A.filterTeam = () => {
+    const q = ($('#team-search')?.value || '').trim().toLowerCase();
+    const role = $('#team-filter')?.value || '';
+    document.querySelectorAll('.team-row').forEach((row) => {
+      const matchesText = !q || row.dataset.teamSearch.includes(q);
+      const matchesRole = !role || row.dataset.teamRole === role || (role === 'reviewer' && row.dataset.teamRole === 'editor');
+      row.hidden = !(matchesText && matchesRole);
+    });
+  };
+  A.setRole = async (id) => {
+    const select = $('#role-' + id);
+    if (!select || select.disabled) return;
+    if (select.value === 'admin' && !confirm('Выдать этому участнику права администратора? Он сможет менять роли других пользователей.')) return;
+    try { await DB.setProfileRole(id, select.value); toast('Роль обновлена'); render(); }
+    catch (e) { fail(e); }
+  };
   A.logout = async () => { await DB.signOut(); S.me = null; toast('Вы вышли'); go('home'); };
   A.saveProfile = async () => {
     const patch = { avatar: pickedAv(), bio: val('bio'), uni: val('un') || null, socials: { vk: val('vk'), telegram: val('tg'), behance: val('bh') } };
