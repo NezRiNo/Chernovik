@@ -188,7 +188,7 @@ create policy "comments: insert own" on public.comments for insert
     and exists (select 1 from public.works w where w.id = work_id and w.status = 'published')
     and (
       parent_id is null
-      or exists (select 1 from public.comments parent where parent.id = parent_id and parent.work_id = work_id and parent.parent_id is null and parent.hidden = false)
+      or exists (select 1 from public.comments parent where parent.id = comments.parent_id and parent.work_id = comments.work_id and parent.parent_id is null and parent.hidden = false)
     )
   );
 create policy "comments: editor hides" on public.comments for update
