@@ -23,7 +23,9 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const S = { me: null, form: '', uni: '', tag: '', tab: 'queue', editId: null, seen: {}, tok: 0, reports: [], rp: null };
   const A = (window.A = {});
-  const isEditor = () => !!(S.me && S.me.role === 'editor');
+  const canReview = () => !!(S.me && ['reviewer', 'admin', 'editor'].includes(S.me.role));
+  const isAdmin = () => !!(S.me && S.me.role === 'admin');
+  const roleLabel = (role) => ({ author: 'Автор', reviewer: 'Проверщик', editor: 'Проверщик', admin: 'Администратор' }[role] || 'Автор');
   const isDemo = () => DB.mode === 'demo';
 
   const CFG = window.APP_CONFIG || {};
@@ -112,12 +114,12 @@
   function shell(active, html) {
     // [ключ, подпись в меню, подпись на телефоне, значок]
     const base = [['home', 'Главная', 'Главная', 'home'], ['catalog', 'Каталог', 'Каталог', 'grid'], ['publish', 'Опубликовать', 'Создать', 'plus'], ['profile', 'Мой кабинет', 'Кабинет', 'user']];
-    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
-    const side = [...base, ...(isEditor() || isDemo() ? [mod] : []), about];
-    const tab = [...base, isEditor() ? mod : about];
+    const mod = ['mod', 'Редакция', 'Редакция', 'shield'], admin = ['admin', 'Команда', 'Команда', 'shield'], about = ['about', 'О проекте', 'О проекте', 'info'];
+    const side = [...base, ...(canReview() || isDemo() ? [mod] : []), ...(isAdmin() ? [admin] : []), about];
+    const tab = [...base, canReview() ? mod : about, ...(isAdmin() ? [admin] : [])];
     const cur = active === 'work' ? 'catalog' : active;
     const me = S.me
-      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${isEditor() ? 'Редактор' : esc(S.me.uni || 'Автор')}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
+      ? `<a class="who" href="#profile" aria-label="Мой кабинет">${avatar(avOf(S.me), 40)}<div><b>${esc(S.me.nick)}</b><span class="sub">${roleLabel(S.me.role)}${S.me.uni && S.me.role === 'author' ? ' · ' + esc(S.me.uni) : ''}</span></div></a><button class="btn sm logout" onclick="A.logout()">Выйти</button>`
       : '<a class="btn sm p" href="#register">Регистрация</a><a class="btn sm" href="#login">Войти</a>';
     return `<div class="shell"><aside class="side"><a class="brand" href="#home">Черновик<small>Веб-журнал студентов Новосибирска</small></a>
       <nav class="nav" aria-label="Основное меню">${side.map(([k, t, , i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}</nav>
@@ -171,7 +173,7 @@
 
   V.work = async (id) => {
     const w = await DB.getWork(id);
-    const allowed = w && (w.status === 'published' || (S.me && (S.me.id === w.author_id || isEditor())));
+    const allowed = w && (w.status === 'published' || (S.me && (S.me.id === w.author_id || canReview())));
     if (!allowed) return `<div class="b empty"><b>Работа не найдена</b>Возможно, она ещё на проверке или была удалена.<div style="margin-top:16px"><a class="btn" href="#catalog">В каталог</a></div></div>`;
     if (w.status === 'published' && !S.seen[id]) { S.seen[id] = 1; DB.incViews(id); }
     const [rx, cm] = await Promise.all([DB.reactions(id, S.me && S.me.id), DB.listComments(id)]);
@@ -214,7 +216,7 @@
       <div class="field"><label for="lp">Пароль</label><input id="lp" type="password" autocomplete="current-password"></div>
       <div class="err" id="er"></div><button class="btn p" onclick="A.login()">Войти</button>
       <p class="hint" style="margin-top:14px">Нет аккаунта? <a href="#register" style="text-decoration:underline">Зарегистрироваться</a></p>
-      ${isDemo() ? '<p class="hint">Демо-аккаунты: mila_writes или redaktor, пароль demo1234</p>' : ''}</div></div>`;
+      ${isDemo() ? '<p class="hint">Демо-аккаунты: mila_writes, redaktor или admin_demo; пароль demo1234</p>' : ''}</div></div>`;
   };
 
   V.profile = async () => {
@@ -262,9 +264,9 @@
   };
 
   V.mod = async () => {
-    if (!isEditor()) {
-      return `<div class="form-wrap"><h1 class="page-title">Редакция</h1><div class="b"><p>Этот раздел доступен только редакторам журнала.</p>
-        ${isDemo() ? '<button class="btn p" onclick="A.demoEditor()">Войти редактором (демо)</button>' : '<p class="hint">Роль редактора выдаёт администратор проекта.</p>'}</div></div>`;
+    if (!canReview()) {
+      return `<div class="form-wrap"><h1 class="page-title">Редакция</h1><div class="b"><p>Этот раздел доступен только проверщикам и администраторам.</p>
+        ${isDemo() ? '<button class="btn p" onclick="A.demoEditor()">Войти проверщиком (демо)</button>' : '<p class="hint">Роль проверщика выдаёт администратор проекта.</p>'}</div></div>`;
     }
     const queue = await DB.listWorks({ status: 'review' });
     S.reports = await DB.listReports();
@@ -287,6 +289,19 @@
         : empty('Новых жалоб нет', 'Когда читатели пожалуются на работу или комментарий, они появятся здесь.');
     }
     return `<h1 class="page-title">Модерация</h1><div class="row" style="margin-bottom:20px">${tabs}</div><div class="bento">${body}</div>`;
+  };
+
+  V.admin = async () => {
+    if (!isAdmin()) return `<div class="form-wrap"><h1 class="page-title">Команда</h1><div class="b"><p>Раздел доступен только администраторам.</p></div></div>`;
+    const people = await DB.listProfiles();
+    const labels = { author: 'Автор', reviewer: 'Проверщик', admin: 'Администратор', editor: 'Проверщик (старая роль)' };
+    const roles = ['author', 'reviewer', 'admin'];
+    return `<div class="form-wrap"><h1 class="page-title">Команда и роли</h1>
+      <p class="lead">Назначайте проверщиков и администраторов только тем, кому доверяете доступ к материалам и управлению сайтом.</p>
+      <div class="b review s12">${people.map((p) => `<section class="team-row"><div><b>${esc(p.nick)}</b><div class="meta">${esc(p.uni || 'Вуз не указан')} · ${esc(labels[p.role] || p.role)}</div></div>
+        <div class="row"><select id="role-${esc(p.id)}" aria-label="Роль пользователя ${esc(p.nick)}">${roles.map((r) => `<option value="${r}"${r === p.role ? ' selected' : ''}>${labels[r]}</option>`).join('')}</select>
+        <button class="btn sm" onclick="A.setRole('${esc(p.id)}')">Сохранить</button></div></section>`).join('')}</div>
+      <p class="hint">Не меняйте собственную роль. Для первого администратора используйте одноразовую SQL-команду из инструкции по настройке Supabase.</p></div>`;
   };
 
   V.about = async () => `<div class="article legal"><h1 class="page-title">О проекте</h1>
@@ -368,7 +383,8 @@
     try { S.me = await DB.signIn({ nick: val('lm'), password: $('#lp').value }); toast('Вы вошли'); go('profile'); }
     catch (e) { $('#er').textContent = e.message; }
   };
-  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор'); render(); };
+  A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как проверщик (демо)'); render(); };
+  A.setRole = async (id) => { const select = $('#role-' + id); if (!select) return; try { await DB.setProfileRole(id, select.value); toast('Роль обновлена'); render(); } catch (e) { fail(e); } };
   A.logout = async () => { await DB.signOut(); S.me = null; toast('Вы вышли'); go('home'); };
   A.saveProfile = async () => {
     const patch = { avatar: pickedAv(), bio: val('bio'), uni: val('un') || null, socials: { vk: val('vk'), telegram: val('tg'), behance: val('bh') } };
