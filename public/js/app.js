@@ -592,7 +592,8 @@
     const t = field ? field.value.trim() : '';
     if (!t) return toast('Напишите ответ');
     if (t.length > 2000) return toast('Ответ должен быть не длиннее 2 000 символов');
-    const button = document.querySelector('#reply-form-' + CSS.escape(parentId) + ' button[type="submit"]');
+    const form = document.getElementById('reply-form-' + parentId);
+    const button = form && form.querySelector('button[type="submit"]');
     if (button) button.disabled = true;
     try { await DB.addComment(workId, t, S.me.id, parentId); await render(); } catch (e) { fail(e); if (button) button.disabled = false; }
   };
