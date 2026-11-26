@@ -137,6 +137,8 @@
     const authors = new Set(ws.map((w) => w.author.id)).size;
     const unis = new Set(ws.map((w) => w.uni).filter(Boolean)).size;
     const f = ws[0];
+    const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
+      ? `<section class="b s12 site-announcement"><div class="label">Объявление</div>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
     const feat = f
       ? `<a class="b tight s8 big-work" href="#work-${esc(f.id)}">${cover(f)}<span class="txt"><span class="meta">Новое в журнале, ${esc(f.form.toLowerCase())}</span><h3>${esc(f.title)}</h3><span class="meta">${esc(f.author.nick || '')}, ${esc(f.uni || '')}</span><span class="excerpt">${esc(f.body)}</span></span></a>`
       : empty('Пока нет опубликованных работ', 'Станьте первым автором: отправьте работу, и редактор опубликует её после проверки.', '<a class="btn p" href="#publish">Опубликовать работу</a>', 's8');
@@ -148,6 +150,7 @@
       <section class="b acc s4"><div class="label">Тема месяца</div><div class="theme-title">«${esc((S.site || {}).theme_title || "Первый снег")}»</div>
         <p>${esc((S.site || {}).theme_description || "Тема необязательная: можно участвовать, а можно публиковать своё.")} ${(S.site || {}).theme_deadline ? "Работы принимаем до " + esc(S.site.theme_deadline) + "." : ""}</p>
         <a class="btn light" href="#publish">Участвовать</a></section>
+      ${announcement}
       ${feat}
       <section class="b ink s4"><div class="label">Журнал сейчас</div><div class="stats">
         <div><div class="stat">${ws.length}</div><span>работ</span></div><div><div class="stat">${authors}</div><span>авторов</span></div><div><div class="stat">${unis}</div><span>вузов</span></div></div></section>
