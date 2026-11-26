@@ -241,7 +241,7 @@
     ],
     comments: [
       { id: 'c1', work_id: 'w1', author_id: 'u2', body: 'Очень точно про последний рейс. Хочу продолжения!', hidden: false, created_at: Date.now() - day },
-      { id: 'c2', work_id: 'w1', author_id: 'ed', body: 'Зацепило. Особенно финал.', hidden: false, created_at: Date.now() - day / 2 },
+      { id: 'c2', work_id: 'w1', author_id: 'ed', body: 'Очень понравился финал.', hidden: false, created_at: Date.now() - day / 2 },
     ],
     reactions: [],
     commentReactions: [],
