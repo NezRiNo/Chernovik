@@ -169,13 +169,12 @@
       ${S.me && S.me.id === author.id ? '' : `<button class="btn sm discover-follow" onclick="A.toggleFollow('${esc(author.id)}')">${followStates[i].following ? 'Вы подписаны' : 'Подписаться'}</button>`}
     </div>`).join('') : '<p class="meta">Новые авторы скоро появятся здесь.</p>';
     return `<div class="home-page home-discover">
-      <section class="discover-heading">
-        <div><span class="eyebrow">Веб-журнал студентов</span><h1>Творчество начинается здесь</h1><p>Публикуй свои работы. Находи вдохновение. Делись идеями.</p></div>
-        <a class="btn p" href="#publish">${ic('plus')}<span>Создать</span></a>
-      </section>
       ${announcement}
       <div class="discover-layout">
         <main class="discover-main">
+          <section class="discover-heading">
+            <div><h1>Творчество<br>начинается здесь</h1><p>Публикуй свои работы. Находи вдохновение. Делись идеями.</p></div>
+          </section>
           <nav class="discover-filters" aria-label="Фильтр по типу публикации">
             ${['', ...FORMS].map((f) => `<button class="chip${(S.homeForm || '') === f ? ' on' : ''}" onclick="A.homeFilter('${esc(f)}')">${f || 'Все'}</button>`).join('')}
           </nav>
@@ -183,8 +182,8 @@
           ${items.length ? `<section class="discover-grid-wrap"><div class="discover-section-head"><h2>Ещё можно открыть</h2><a class="text-link" href="#catalog">Все работы ↗</a></div><div class="discover-grid">${items.map((w) => postCard(w)).join('')}</div></section>` : ''}
         </main>
         <aside class="discover-aside">
-          <section class="discover-authors"><div class="discover-section-head"><h2>Авторы недели</h2><a class="text-link" href="#catalog">Все ↗</a></div>${authorList}</section>
-          <section class="discover-invite"><span class="discover-spark">${ic('spark')}</span><h3>Твоя работа — часть журнала</h3><p>Поделись тем, что создаёшь, и найди своих читателей.</p><a class="btn p" href="#publish">Опубликовать работу</a></section>
+          <section class="discover-authors"><div class="discover-section-head"><h2>${ic('spark')} Авторы недели</h2></div>${authorList}<a class="discover-all-authors" href="#catalog">Все авторы →</a></section>
+          <section class="discover-invite"><span class="discover-spark">${ic('spark')}</span><h3>Подписывайтесь,<br>чтобы не пропустить<br>новые работы!</h3><a class="btn p" href="#catalog">Подписаться</a></section>
         </aside>
       </div>
     </div>`;
