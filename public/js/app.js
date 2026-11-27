@@ -218,11 +218,34 @@
     const all = await DB.listWorks({ status: 'published' });
     const ws = all.filter((w) => (!S.form || w.form === S.form) && (!S.uni || w.uni === S.uni) && (!S.tag || (w.tags || []).includes(S.tag)));
     const tags = [...new Set(all.flatMap((w) => w.tags || []))].sort((a, b) => a.localeCompare(b, 'ru'));
-    return `<h1 class="page-title">Каталог</h1>
-      <div class="row" style="margin-bottom:12px;flex-wrap:wrap">${['', ...FORMS].map((f) => `<button class="chip${S.form === f ? ' on' : ''}" onclick="A.setForm('${f}')">${f || 'Все формы'}</button>`).join('')}
-      <select style="width:auto;margin-left:auto" aria-label="Вуз" onchange="A.setUni(this.value)">${options(UNIS, S.uni, 'Любой вуз')}</select></div>
-      ${tags.length ? `<div class="row" style="margin-bottom:22px;flex-wrap:wrap"><span class="meta">Теги:</span><button class="chip${!S.tag ? ' on' : ''}" onclick="A.setTag('')">Все</button>${tags.map((t) => `<button class="chip${S.tag === t ? ' on' : ''}" onclick="A.setTag('${esc(t)}')">${esc(t)}</button>`).join('')}</div>` : ''}
-      <div class="bento">${ws.length ? ws.map(card).join('') : empty('Ничего не найдено', 'Измените фильтры или опубликуйте работу в этой категории.', '<a class="btn p" href="#publish">Опубликовать работу</a>')}</div>`;
+    const journalAudio = (audio, title) => `<div class="journal-audio discover-card-audio">
+      <button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ${esc(title)}">${ic('play')}</button>
+      <div class="discover-audio-track"><span class="discover-audio-title">${esc(audio.name || 'Аудиозапись')}</span>
+        <div class="discover-audio-wave" role="slider" tabindex="0" aria-label="Перемотка аудио" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" onclick="A.seekCardAudio(event)" onkeydown="A.seekCardAudioKey(event)" title="Нажмите или используйте стрелки для перемотки">${Array.from({length:30}, (_, i) => `<i style="--bar:${18 + ((i * 17 + 11) % 27)}%"></i>`).join('')}</div>
+      </div><time class="discover-audio-time">0:00</time>
+      <audio class="discover-audio-element" preload="metadata" src="${esc(audio.url)}" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" onended="A.updateCardAudio(this)" aria-label="Слушать ${esc(title)}"></audio>
+    </div>`;
+    const journalCard = (w) => {
+      const image = safeUrl(w.cover_url);
+      const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
+      const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 150);
+      return `<article class="journal-card${audio ? ' has-audio' : ''}">
+        <a class="journal-card-main" href="#work-${esc(w.id)}">
+          ${audio ? '<span class="journal-audio-art" aria-hidden="true">' + ic('music') + '</span>' : image ? `<span class="journal-card-cover"><img src="${esc(image)}" alt="" loading="lazy"></span>` : ''}
+          <span class="journal-card-copy"><span class="meta">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="journal-card-author">${esc(w.author.nick || 'Автор')}</span>
+          ${excerpt ? `<span class="journal-card-excerpt">${esc(excerpt)}${excerpt.length >= 150 ? '…' : ''}</span>` : ''}
+          <span class="journal-card-stats">${ic('heart','sm')}<span>${safeCount(w.counts && w.counts.like)}</span><span aria-hidden="true">·</span>${ic('message','sm')}<span>${safeCount(w.comment_count)}</span></span></span>
+        </a>${audio ? journalAudio(audio, w.title) : ''}
+      </article>`;
+    };
+    return `<section class="journal-page">
+      <header class="journal-heading"><div><span class="eyebrow">Черновик · публикации</span><h1>Журнал</h1><p>Работы студентов — тексты, фотографии, иллюстрации и музыка.</p></div><a class="btn p" href="#publish">${ic('plus')} Создать работу</a></header>
+      <div class="journal-toolbar"><div class="journal-form-filters" aria-label="Тип публикации">${['', ...FORMS].map((f) => `<button class="chip${S.form === f ? ' on' : ''}" onclick="A.setForm('${esc(f)}')">${f || 'Все работы'}</button>`).join('')}</div>
+      <select aria-label="Вуз" onchange="A.setUni(this.value)">${options(UNIS, S.uni, 'Любой вуз')}</select></div>
+      ${tags.length ? `<div class="journal-tags"><span class="meta">Темы</span><button class="chip${!S.tag ? ' on' : ''}" onclick="A.setTag('')">Все</button>${tags.map((t) => `<button class="chip${S.tag === t ? ' on' : ''}" onclick="A.setTag('${esc(t)}')">${esc(t)}</button>`).join('')}</div>` : ''}
+      <div class="journal-results"><span>${ws.length} ${ws.length === 1 ? 'работа' : ws.length > 1 && ws.length < 5 ? 'работы' : 'работ'}</span><span>Новые публикации</span></div>
+      <div class="journal-grid">${ws.length ? ws.map(journalCard).join('') : empty('Пока нет работ', 'Измените фильтры или опубликуйте первую работу.', '<a class="btn p" href="#publish">Опубликовать работу</a>')}</div>
+    </section>`;
   };
 
   V.work = async (id) => {
