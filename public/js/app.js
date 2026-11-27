@@ -187,7 +187,7 @@
       return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}">
         <a class="discover-card-link" href="#work-${esc(w.id)}">
           <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
-          <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}</span>
+          <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}<span class="discover-count">${safeCount(w.counts && w.counts.like)}</span><span class="discover-metric-separator" aria-hidden="true">·</span>${ic('message','sm')}<span class="discover-count">${safeCount(w.comment_count)}</span></span></span>
         </a>
         ${audio ? cardAudio(audio, w.title) : ''}
       </article>`;
