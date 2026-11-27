@@ -178,7 +178,7 @@
     const followStates = await Promise.all(authors.map((author) => DB.followInfo(author.id, S.me && S.me.id).catch(() => ({ following: false }))));
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
-    const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" aria-hidden="true">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
+    const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" role="slider" tabindex="0" aria-label="Перемотка аудио" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" onclick="A.seekCardAudio(event)" onkeydown="A.seekCardAudioKey(event)" title="Нажмите или используйте стрелки для перемотки">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" onended="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
     const postCard = (w, featuredCard = false) => {
       const image = safeUrl(w.cover_url);
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
@@ -551,12 +551,39 @@
       audio.play().then(() => { button.classList.add('is-playing'); button.innerHTML = ic('pause'); }).catch(() => {});
     } else { audio.pause(); button.classList.remove('is-playing'); button.innerHTML = ic('play'); }
   };
+  A.seekCardAudio = (event) => {
+    const wave = event.currentTarget;
+    const audio = wave.closest('.discover-card-audio')?.querySelector('audio');
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    const rect = wave.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * audio.duration;
+    A.updateCardAudio(audio);
+  };
+  A.seekCardAudioKey = (event) => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    const wave = event.currentTarget;
+    const audio = wave.closest('.discover-card-audio')?.querySelector('audio');
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    if (event.key === 'Home') audio.currentTime = 0;
+    else if (event.key === 'End') audio.currentTime = audio.duration;
+    else audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + (event.key === 'ArrowRight' ? 5 : -5)));
+    A.updateCardAudio(audio);
+  };
   A.updateCardAudio = (audio) => {
     const card = audio.closest('.discover-card-audio');
     if (!card) return;
     const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
     const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
     const fmt = (v) => Math.floor(v / 60) + ':' + String(Math.floor(v % 60)).padStart(2, '0');
+    const wave = card.querySelector('.discover-audio-wave');
+    if (wave) {
+      const ratio = duration ? current / duration : 0;
+      wave.style.setProperty('--played', (ratio * 100) + '%');
+      wave.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+      wave.setAttribute('aria-valuetext', fmt(current) + (duration ? ' из ' + fmt(duration) : ''));
+    }
     const label = card.querySelector('.discover-audio-time');
     if (label) label.textContent = fmt(current) + (duration ? ' / ' + fmt(duration) : '');
     const play = card.querySelector('.discover-audio-play');
