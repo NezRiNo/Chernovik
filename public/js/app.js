@@ -170,12 +170,13 @@
   V.home = async () => {
     const all = await DB.listWorks({ status: 'published', limit: 14 });
     const ws = S.homeForm ? all.filter((w) => w.form === S.homeForm) : all;
-    const featured = ws[0];
-    const items = ws.slice(1, 5);
+    const featured = ws.find((w) => w.form !== 'Музыка' && safeUrl(w.cover_url)) || ws.find((w) => w.form !== 'Музыка') || ws[0];
+    const items = ws.filter((w) => !featured || w.id !== featured.id).slice(0, 4);
     const authors = [...new Map(all.filter((w) => w.author && w.author.id !== (S.me && S.me.id)).map((w) => [w.author.id, w.author])).values()].slice(0, 3);
     const followStates = await Promise.all(authors.map((author) => DB.followInfo(author.id, S.me && S.me.id).catch(() => ({ following: false }))));
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
+    const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" aria-hidden="true">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
     const postCard = (w, featuredCard = false) => {
       const image = safeUrl(w.cover_url);
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
@@ -186,7 +187,7 @@
           <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
           <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}</span>
         </a>
-        ${audio ? `<div class="discover-card-audio"><span>♫ ${esc(audio.name || 'Аудиозапись')}</span><audio controls preload="metadata" src="${esc(audio.url)}" aria-label="Слушать ${esc(w.title)}"></audio></div>` : ''}
+        ${audio ? cardAudio(audio, w.title) : ''}
       </article>`;
     };
     const authorList = authors.length ? authors.map((author, i) => `<div class="discover-author-row">
@@ -537,6 +538,28 @@
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
   A.manageTab = (tab) => { S.manageTab = tab; render(); };
   A.toggleTheme = () => { const next = activeTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('cher-visitor-theme', next); } catch (_) {} updateThemeButton(); };
+  A.toggleCardAudio = (button) => {
+    const card = button.closest('.discover-card-audio');
+    const audio = card && card.querySelector('audio');
+    if (!audio) return;
+    if (audio.paused) {
+      document.querySelectorAll('.discover-audio-element').forEach((other) => {
+        if (other !== audio) { other.pause(); other.closest('.discover-card-audio')?.querySelector('.discover-audio-play')?.classList.remove('is-playing'); }
+      });
+      audio.play().then(() => button.classList.add('is-playing')).catch(() => {});
+    } else { audio.pause(); button.classList.remove('is-playing'); }
+  };
+  A.updateCardAudio = (audio) => {
+    const card = audio.closest('.discover-card-audio');
+    if (!card) return;
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    const fmt = (v) => Math.floor(v / 60) + ':' + String(Math.floor(v % 60)).padStart(2, '0');
+    const label = card.querySelector('.discover-audio-time');
+    if (label) label.textContent = fmt(current) + (duration ? ' / ' + fmt(duration) : '');
+    const play = card.querySelector('.discover-audio-play');
+    if (play) { play.classList.toggle('is-playing', !audio.paused); play.innerHTML = ic(audio.paused ? 'play' : 'pause'); }
+  };
 
   A.saveSiteSettings = async () => {
     const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text','accent_color','site_theme'];
