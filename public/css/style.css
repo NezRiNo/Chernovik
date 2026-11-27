@@ -1851,3 +1851,8 @@ body { background:var(--paper); }
   .journal-item > .work:not(.no-cover) .cover { aspect-ratio:16/9; max-height:none; }
   .journal-item .journal-audio { margin:0; padding:9px 11px 11px; }
 }
+
+/* Keep Journal audio attached directly under its compact music card, not pushed to the grid bottom */
+.journal-item { align-self:start; }
+.journal-item > .journal-music-card { flex:0 0 auto; height:auto; }
+.journal-item > .journal-audio { flex:0 0 auto; align-self:stretch; margin-top:-1px; }
