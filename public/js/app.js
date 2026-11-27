@@ -546,10 +546,10 @@
     if (!audio) return;
     if (audio.paused) {
       document.querySelectorAll('.discover-audio-element').forEach((other) => {
-        if (other !== audio) { other.pause(); other.closest('.discover-card-audio')?.querySelector('.discover-audio-play')?.classList.remove('is-playing'); }
+        if (other !== audio) { other.pause(); const otherButton = other.closest('.discover-card-audio')?.querySelector('.discover-audio-play'); if (otherButton) { otherButton.classList.remove('is-playing'); otherButton.innerHTML = ic('play'); } }
       });
-      audio.play().then(() => button.classList.add('is-playing')).catch(() => {});
-    } else { audio.pause(); button.classList.remove('is-playing'); }
+      audio.play().then(() => { button.classList.add('is-playing'); button.innerHTML = ic('pause'); }).catch(() => {});
+    } else { audio.pause(); button.classList.remove('is-playing'); button.innerHTML = ic('play'); }
   };
   A.updateCardAudio = (audio) => {
     const card = audio.closest('.discover-card-audio');
