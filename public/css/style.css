@@ -1802,3 +1802,52 @@ body { background:var(--paper); }
   .journal-filters { gap:8px; }
   .journal-filters select { margin-left:0 !important; width:100%; }
 }
+
+
+/* Journal: reuse the homepage waveform player and keep publication cards compact */
+.journal-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; align-items:stretch; }
+.journal-item { grid-column:auto; min-width:0; }
+.journal-item > .work { display:flex; flex-direction:column; width:100%; min-width:0; height:100%; }
+.journal-item > .work .txt { flex:1 1 auto; min-width:0; }
+.journal-item > .work:not(.no-cover) .cover { display:block; width:100%; aspect-ratio:4/3; max-height:190px; overflow:hidden; }
+.journal-item > .work:not(.no-cover) .cover img { width:100%; height:100%; object-fit:cover; }
+.journal-item > .work h3 { font-size:16px; line-height:1.25; overflow-wrap:break-word; }
+.journal-item > .work .meta { font-size:11px; line-height:1.4; }
+.journal-item > .work .rx { gap:10px; font-size:11px; }
+.journal-item > .work.no-cover { min-height:0; }
+.journal-item > .work.no-cover .work-mark { flex:0 0 38px; width:38px; height:38px; margin:12px 0 0 12px; border-radius:10px; }
+.journal-item > .work.no-cover .work-mark .ic { width:19px; height:19px; }
+.journal-item > .work.no-cover .txt { padding:10px 12px; }
+.journal-item .journal-audio {
+  display:flex; align-items:center; gap:9px; min-width:0; margin:0;
+  padding:9px 11px 11px; border:1px solid var(--line); border-top:0;
+  border-radius:0 0 12px 12px; background:var(--card); color:var(--mute); font-size:10px;
+}
+.journal-item .journal-audio .discover-audio-play {
+  display:grid; place-items:center; flex:0 0 30px; width:30px; height:30px;
+  padding:0; border:0; border-radius:50%; color:var(--onacc); background:var(--acc); cursor:pointer;
+}
+.journal-item .journal-audio .discover-audio-play .ic { width:13px; height:13px; }
+.journal-item .journal-audio .discover-audio-play.is-playing { background:var(--ink); color:var(--card); }
+.journal-item .journal-audio .discover-audio-track { flex:1 1 auto; min-width:0; display:grid; gap:5px; }
+.journal-item .journal-audio .discover-audio-title { overflow:hidden; color:var(--mute); font-size:10px; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+.journal-item .journal-audio .discover-audio-wave { display:flex; align-items:center; gap:2px; width:100%; height:21px; overflow:hidden; position:relative; cursor:pointer; touch-action:pan-y; border-radius:5px; }
+.journal-item .journal-audio .discover-audio-wave i { flex:1 1 2px; min-width:2px; height:var(--bar); border-radius:2px; background:color-mix(in srgb,var(--acc) 72%,var(--mute)); opacity:.8; position:relative; z-index:1; }
+.journal-item .journal-audio .discover-audio-wave::before { content:""; position:absolute; z-index:0; inset:0 auto 0 0; width:var(--played,0%); border-radius:4px; background:color-mix(in srgb,var(--acc) 16%,transparent); pointer-events:none; }
+.journal-item .journal-audio .discover-audio-time { flex:0 0 auto; color:var(--mute); font-size:10px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.journal-item .journal-audio .discover-audio-element { display:none; }
+.journal-item .journal-music-card { flex:1 0 auto; border-radius:12px 12px 0 0; }
+.journal-item .journal-music-card .work-mark { color:var(--acc); }
+.journal-item .journal-audio .discover-audio-wave:focus-visible { outline:2px solid var(--acc); outline-offset:3px; }
+@media(max-width:1100px) { .journal-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; } }
+@media(max-width:760px) {
+  .journal-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; }
+  .journal-item > .work .txt { padding:11px; }
+  .journal-item .journal-audio { gap:7px; padding:8px; }
+  .journal-item .journal-audio .discover-audio-play { flex-basis:28px; width:28px; height:28px; }
+}
+@media(max-width:520px) {
+  .journal-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .journal-item > .work:not(.no-cover) .cover { aspect-ratio:16/9; max-height:none; }
+  .journal-item .journal-audio { margin:0; padding:9px 11px 11px; }
+}
