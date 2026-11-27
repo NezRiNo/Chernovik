@@ -203,9 +203,6 @@
       </section>
       <div class="discover-layout">
         <main class="discover-main">
-          <nav class="discover-filters" aria-label="Фильтр по типу публикации">
-            ${['', ...FORMS].map((f) => `<button class="chip${(S.homeForm || '') === f ? ' on' : ''}" onclick="A.homeFilter('${esc(f)}')">${f || 'Все'}</button>`).join('')}
-          </nav>
           ${featured ? `<section class="discover-featured-wrap"><div class="discover-section-head"><h2>${S.homeForm ? esc(S.homeForm) : 'Последняя работа'}</h2><a class="text-link" href="#catalog">Весь журнал ↗</a></div>${postCard(featured, true)}</section>` : `<div class="home-list-empty"><b>Пока нет публикаций в этой категории</b><p>Попробуйте другой фильтр или загляните в журнал позже.</p><button class="btn" onclick="A.homeFilter('')">Показать все работы</button></div>`}
           ${items.length ? `<section class="discover-grid-wrap"><div class="discover-section-head"><h2>Ещё можно открыть</h2><a class="text-link" href="#catalog">Все работы ↗</a></div><div class="discover-grid">${items.map((w) => postCard(w)).join('')}</div></section>` : ''}
         </main>
