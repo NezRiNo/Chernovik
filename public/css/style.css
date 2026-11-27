@@ -1758,20 +1758,47 @@ body { background:var(--paper); }
 
 
 
-/* Journal: reuse the site's existing card system; attach music controls without changing card geometry */
-.journal-intro { margin:-4px 0 22px; max-width:700px; color:var(--mute); }
-.journal-count { margin:0 0 12px; }
-.journal-grid { align-items:stretch; }
-.journal-item { grid-column:span 4; display:flex; flex-direction:column; min-width:0; gap:0; }
-.journal-item > .journal-music-card { flex:1 0 auto; }
-.journal-item .journal-audio { margin:0; padding:10px 12px; border:1px solid var(--line); border-top:0; border-radius:0 0 14px 14px; background:var(--card); }
-.journal-music-card { border-radius:14px 14px 0 0; }
+/* Journal layout: compact, consistent cards on the site's existing 12-column grid */
+.journal-intro { max-width:640px; margin:-4px 0 18px; color:var(--mute); }
+.journal-count { margin:0 0 10px; }
+.journal-grid { grid-template-columns:repeat(12,minmax(0,1fr)); align-items:stretch; gap:16px; }
+.journal-item { grid-column:span 3; display:flex; flex-direction:column; min-width:0; min-height:0; }
+.journal-item > .work { width:100%; min-width:0; height:100%; min-height:0; }
+.journal-item > .work:not(.no-cover) .cover { aspect-ratio:4/3; max-height:210px; }
+.journal-item > .work .txt { min-width:0; padding:13px 14px 14px; gap:5px; }
+.journal-item > .work h3 { font-size:17px; line-height:1.24; overflow-wrap:break-word; }
+.journal-item > .work .meta { font-size:12px; line-height:1.4; }
+.journal-item > .work .rx { gap:11px; padding-top:6px; font-size:12px; }
+.journal-item > .work.no-cover { min-height:148px; }
+.journal-item > .work.no-cover .work-mark { flex:0 0 44px; width:44px; height:44px; margin:13px 0 0 13px; border-radius:10px; }
+.journal-item > .work.no-cover .work-mark .ic { width:21px; height:21px; }
+.journal-item > .work.no-cover .txt { padding:12px 12px 12px 10px; }
+.journal-item > .work.no-cover h3 { font-size:16px; }
+.journal-item .journal-audio { display:flex; align-items:center; gap:8px; min-width:0; margin:0; padding:8px 10px 10px; border:1px solid var(--line); border-top:0; border-radius:0 0 12px 12px; background:var(--card); }
+.journal-item .journal-audio .discover-audio-play { flex:0 0 28px; width:28px; height:28px; }
+.journal-item .journal-audio .discover-audio-title { font-size:10px; }
+.journal-item .journal-audio .discover-audio-wave { height:18px; }
+.journal-item .journal-audio .discover-audio-time { font-size:10px; }
+.journal-music-card { flex:1 0 auto; border-radius:12px 12px 0 0; }
 .journal-music-card .work-mark { color:var(--acc); }
-@media(max-width:900px) {
-  .journal-item { grid-column:span 6; }
+@media(max-width:1100px) {
+  .journal-grid { gap:14px; }
+  .journal-item { grid-column:span 4; }
+  .journal-item > .work:not(.no-cover) .cover { max-height:190px; }
 }
-@media(max-width:600px) {
+@media(max-width:760px) {
+  .journal-grid { gap:12px; }
+  .journal-item { grid-column:span 6; }
+  .journal-item > .work:not(.no-cover) .cover { max-height:220px; }
+  .journal-item > .work .txt { padding:12px; }
+}
+@media(max-width:480px) {
+  .journal-grid { gap:12px; }
   .journal-item { grid-column:span 12; }
+  .journal-item > .work:not(.no-cover) .cover { max-height:none; aspect-ratio:16/9; }
+  .journal-item > .work.no-cover { min-height:0; }
+  .journal-item > .work.no-cover .work-mark { flex-basis:48px; width:48px; height:48px; margin:12px 0 0 12px; }
+  .journal-item > .work.no-cover .txt { padding:12px; }
   .journal-filters { gap:8px; }
   .journal-filters select { margin-left:0 !important; width:100%; }
 }
