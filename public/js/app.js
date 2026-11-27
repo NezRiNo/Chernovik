@@ -168,11 +168,12 @@
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
     const postCard = (w, featuredCard = false) => {
       const image = safeUrl(w.cover_url);
+      const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
       const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
       return `<a class="discover-work${featuredCard ? ' discover-featured' : ''}" href="#work-${esc(w.id)}">
         <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
-        <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}</span></span>
+        <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}${audio ? '<span class="discover-card-audio" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()"><span>♫ ' + esc(audio.name || 'Аудио') + '</span><audio controls preload="metadata" src="' + esc(audio.url) + '" aria-label="Слушать"></audio></span>' : ''}</span>
       </a>`;
     };
     const authorList = authors.length ? authors.map((author, i) => `<div class="discover-author-row">
