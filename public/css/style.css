@@ -1646,3 +1646,34 @@ body { background:var(--paper); }
   }
   .home-discover .discover-work:not(.discover-featured) .discover-image { height:120px; }
 }
+
+
+/* Seekable waveform, matching the compact audio player */
+.home-discover .discover-audio-wave {
+  position:relative;
+  cursor:pointer;
+  touch-action:pan-y;
+  outline:none;
+  border-radius:5px;
+}
+.home-discover .discover-audio-wave::before {
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:0; top:0; bottom:0;
+  width:var(--played,0%);
+  border-radius:4px;
+  background:color-mix(in srgb,var(--acc) 16%,transparent);
+  pointer-events:none;
+}
+.home-discover .discover-audio-wave i {
+  position:relative;
+  z-index:1;
+  transition:background-color .12s ease,opacity .12s ease;
+}
+.home-discover .discover-audio-wave i:nth-child(-n+1) { background:var(--acc); }
+.home-discover .discover-audio-wave:focus-visible {
+  outline:2px solid var(--acc);
+  outline-offset:4px;
+}
+.home-discover .discover-audio-wave:hover i { opacity:1; }
