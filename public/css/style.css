@@ -1856,3 +1856,23 @@ body { background:var(--paper); }
 .journal-item { align-self:start; }
 .journal-item > .journal-music-card { flex:0 0 auto; height:auto; }
 .journal-item > .journal-audio { flex:0 0 auto; align-self:stretch; margin-top:-1px; }
+
+/* Dark theme: keep the weekly authors panel on the same dark surface as the site */
+:root[data-theme="dark"] .home-discover .discover-authors,
+:root[data-theme="dark"] .home-discover .discover-invite {
+  background:var(--card) !important;
+  color:var(--ink) !important;
+}
+:root[data-theme="dark"] .home-discover .discover-authors .discover-section-head h2,
+:root[data-theme="dark"] .home-discover .discover-authors .discover-author-person strong,
+:root[data-theme="dark"] .home-discover .discover-invite h3 { color:var(--ink) !important; }
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) .home-discover .discover-authors,
+  :root:not([data-theme="light"]) .home-discover .discover-invite {
+    background:var(--card) !important;
+    color:var(--ink) !important;
+  }
+  :root:not([data-theme="light"]) .home-discover .discover-authors .discover-section-head h2,
+  :root:not([data-theme="light"]) .home-discover .discover-authors .discover-author-person strong,
+  :root:not([data-theme="light"]) .home-discover .discover-invite h3 { color:var(--ink) !important; }
+}
