@@ -1073,3 +1073,11 @@ a.admin-stat:hover { border-color:var(--ink); }
   .theme-toggle { width:31px; height:31px; }
   .topbar-context { max-width:45%; font-size:11px; }
 }
+
+.discover-metrics { flex-wrap:wrap; }
+.discover-metrics .discover-card-audio { flex:1 1 100%; margin:5px 0 0; }
+.discover-card-audio { cursor:default; }
+@media(max-width:700px) {
+  .discover-metrics .discover-card-audio { min-width:0; }
+  .discover-card-audio audio { height:28px; }
+}
