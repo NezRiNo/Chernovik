@@ -1399,3 +1399,131 @@ body { background:var(--paper); }
   .home-discover .discover-work.has-audio:not(.discover-featured) .discover-work-copy strong { font-size:18px; }
   .home-discover .discover-work.has-audio:not(.discover-featured) .discover-card-audio { margin:0 12px 12px; }
 }
+
+
+/* Card readability: give copy a real column and never break words into letters */
+.home-discover .discover-grid {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+.home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-card-link {
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr);
+  align-items:center;
+  gap:14px;
+  min-width:0;
+  padding:12px;
+}
+.home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-image {
+  width:112px;
+  min-width:0;
+  aspect-ratio: .82;
+  align-self:center;
+  overflow:hidden;
+  border-radius:10px;
+}
+.home-discover .discover-work-copy {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:7px;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:break-word;
+  word-break:normal;
+  hyphens:none;
+}
+.home-discover .discover-work-copy > * { min-width:0; max-width:100%; }
+.home-discover .discover-work-copy strong {
+  display:block;
+  width:100%;
+  font-size:clamp(16px,1.25vw,19px);
+  line-height:1.18;
+  letter-spacing:normal;
+  white-space:normal;
+  overflow-wrap:break-word;
+  word-break:normal;
+  hyphens:none;
+}
+.home-discover .discover-author {
+  display:block;
+  width:100%;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  line-height:1.35;
+}
+.home-discover .discover-metrics {
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:5px;
+  white-space:nowrap;
+  overflow:visible;
+  font-variant-numeric:tabular-nums;
+}
+.home-discover .discover-metrics .discover-count,
+.home-discover .discover-metrics .discover-metric-separator {
+  display:inline-block;
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+.home-discover .discover-metrics .ic { flex:0 0 14px; }
+.home-discover .discover-work.has-audio:not(.discover-featured) .discover-work-copy {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:7px;
+  width:100%;
+  min-width:0;
+}
+.home-discover .discover-work.has-audio:not(.discover-featured) .discover-work-copy strong {
+  width:100%;
+  font-size:19px;
+  line-height:1.2;
+  overflow-wrap:break-word;
+  word-break:normal;
+}
+.home-discover .discover-work.has-audio:not(.discover-featured) .discover-card-link {
+  display:block;
+  padding:14px 16px 10px;
+}
+.home-discover .discover-work.has-audio:not(.discover-featured) .discover-card-audio {
+  display:flex;
+  width:auto;
+  min-width:0;
+  margin:0 12px 12px;
+}
+@media(max-width:900px) {
+  .home-discover .discover-grid { gap:12px; }
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-card-link {
+    grid-template-columns:96px minmax(0,1fr);
+    gap:11px;
+    padding:10px;
+  }
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-image { width:96px; }
+  .home-discover .discover-work-copy { gap:6px; }
+  .home-discover .discover-work-copy strong { font-size:16px; }
+}
+@media(max-width:650px) {
+  .home-discover .discover-grid { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-card-link {
+    grid-template-columns:104px minmax(0,1fr);
+    gap:12px;
+    padding:11px;
+  }
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-image { width:104px; }
+  .home-discover .discover-work-copy strong { font-size:17px; }
+}
+@media(max-width:360px) {
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-card-link {
+    grid-template-columns:84px minmax(0,1fr);
+    gap:9px;
+    padding:9px;
+  }
+  .home-discover .discover-work:not(.discover-featured):not(.has-audio) .discover-image { width:84px; }
+  .home-discover .discover-work-copy strong { font-size:16px; }
+}
