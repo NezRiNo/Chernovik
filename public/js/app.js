@@ -227,10 +227,10 @@
     </div>`;
     const journalCard = (w) => {
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
-      if (!audio) return card(w);
-      return `<div class="journal-item s4">
+      if (!audio) return `<div class="journal-item">${card(w)}</div>`;
+      return `<div class="journal-item">
         <a class="b tight work no-cover journal-music-card" href="#work-${esc(w.id)}">
-          <span class="work-mark" aria-hidden="true">${ic('music')}</span>
+          <span class="work-mark" aria-hidden="true">${ic('audio')}</span>
           <span class="txt"><span class="meta">${esc(w.form || 'Музыка')}</span><h3>${esc(w.title)}</h3>
           <span class="meta">Автор: ${esc(w.author?.nick || 'Автор')}, ${esc(w.uni || 'вуз не указан')}</span>
           <span class="rx"><span title="Просмотры">${ic('eye','sm')}${safeCount(w.views)}</span><span title="Комментарии">${ic('message','sm')}${safeCount(w.comment_count)}</span><span title="Реакции">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)}</span></span></span>
