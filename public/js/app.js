@@ -140,18 +140,28 @@
   }
 
   function shell(active, html) {
-    const base = [['home', 'Главная', 'home'], ['catalog', 'Журнал', 'grid'], ['publish', 'Опубликовать', 'plus']];
+    const base = [['home', 'Главная', 'home'], ['catalog', 'Журнал', 'grid'], ['publish', 'Создать', 'plus']];
     const cur = ['work'].includes(active) ? 'catalog' : (['mod','admin','settings'].includes(active) ? 'manage' : active);
     const me = S.me
-      ? `<a class="account-avatar" href="#profile" aria-label="Личный кабинет" title="Личный кабинет">${avatar(avOf(S.me), 42)}</a>`
-      : '<div class="account-actions"><a class="btn sm" href="#login">Войти</a><a class="btn sm p" href="#register">Регистрация</a></div>';
-    const manage = (canReview() || isDemo()) ? '<a class="manage-link" href="#manage" aria-label="Управление проектом" title="Управление проектом">'+ic('shield')+'<span>Управление</span></a>' : '';
-    return `<div class="shell">
-      <aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
-      <nav class="nav" aria-label="Основное меню">${base.map(([k,t,i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</nav>
-      </aside>
-      <main class="main"><header class="topbar"><div class="topbar-context">${active === 'home' ? 'Пространство для первых публикаций' : active === 'catalog' || active === 'work' ? 'Читайте и открывайте новое' : active === 'manage' || ['mod','admin','settings'].includes(active) ? 'Управление проектом' : ''}</div><div class="topbar-actions"><button class="theme-toggle" id="theme-toggle" type="button" onclick="A.toggleTheme()" aria-label="Переключить тему" title="Переключить тему">${ic(activeTheme() === "dark" ? "sun" : "moon")}</button>${manage}${me}</div></header><div class="page">${html}</div>${footer()}</main>
-      <nav class="tabbar" aria-label="Быстрая навигация">${base.map(([k,t,i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${k === 'publish' ? 'Создать' : t}</span></a>`).join('')}<a href="${S.me ? '#profile' : '#login'}" class="${cur === 'profile' ? 'on' : ''}">${S.me ? avatar(avOf(S.me),24) : ic('user')}<span>Кабинет</span></a></nav></div>`;
+      ? `<a class="account-avatar" href="#profile" aria-label="Личный кабинет" title="Личный кабинет">${avatar(avOf(S.me), 38)}</a>`
+      : '<a class="btn sm" href="#login">Войти</a>';
+    const manage = (canReview() || isDemo()) ? '<a class="manage-link" href="#manage" aria-label="Управление проектом" title="Управление проектом">'+ic('shield')+'</a>' : '';
+    return `<div class="shell reference-shell">
+      <main class="main">
+        <header class="topbar reference-topbar">
+          <a class="brand reference-brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="26" height="26"><span>${esc((S.site || {}).site_name || "Черновик")}<small>✦</small></span></a>
+          <nav class="reference-nav" aria-label="Основное меню">${base.map(([k,t]) => k === 'publish' ? '' : `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${t}</a>`).join('')}</nav>
+          <div class="topbar-actions">
+            <a class="reference-create" href="#publish">${ic('pen')}<span>Создать</span></a>
+            <button class="theme-toggle" id="theme-toggle" type="button" onclick="A.toggleTheme()" aria-label="Переключить тему" title="Переключить тему">${ic(activeTheme() === "dark" ? "sun" : "moon")}</button>
+            ${manage}${me}
+          </div>
+        </header>
+        <div class="page">${html}</div>
+        ${footer()}
+      </main>
+      <nav class="tabbar" aria-label="Быстрая навигация">${base.map(([k,t,i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${k === 'publish' ? 'Создать' : t}</span></a>`).join('')}<a href="${S.me ? '#profile' : '#login'}" class="${cur === 'profile' ? 'on' : ''}">${S.me ? avatar(avOf(S.me),24) : ic('user')}<span>Кабинет</span></a></nav>
+    </div>`;
   }
 
   /* ---------- Страницы ---------- */
@@ -171,10 +181,13 @@
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
       const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
-      return `<a class="discover-work${featuredCard ? ' discover-featured' : ''}" href="#work-${esc(w.id)}">
-        <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
-        <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}${audio ? '<span class="discover-card-audio" onclick="event.stopPropagation()" onpointerdown="event.stopPropagation()"><span>♫ ' + esc(audio.name || 'Аудио') + '</span><audio controls preload="metadata" src="' + esc(audio.url) + '" aria-label="Слушать"></audio></span>' : ''}</span>
-      </a>`;
+      return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}">
+        <a class="discover-card-link" href="#work-${esc(w.id)}">
+          <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
+          <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}${safeCount(w.counts && w.counts.like)} <span aria-hidden="true">·</span> ${ic('message','sm')}${safeCount(w.comment_count)}</span>
+        </a>
+        ${audio ? `<div class="discover-card-audio"><span>♫ ${esc(audio.name || 'Аудиозапись')}</span><audio controls preload="metadata" src="${esc(audio.url)}" aria-label="Слушать ${esc(w.title)}"></audio></div>` : ''}
+      </article>`;
     };
     const authorList = authors.length ? authors.map((author, i) => `<div class="discover-author-row">
       <a class="discover-author-person" href="#author-${esc(author.id)}">${avatar(avOf(author), 38)}<span><strong>${esc(author.nick || 'Автор')}</strong><small>${esc(author.uni || 'Автор Черновика')}</small></span></a>
