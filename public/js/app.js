@@ -48,8 +48,19 @@
     eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.5"/>',
     message: '<path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.6A7 7 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5z"/>',
     audio: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
+    moon: '<path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/>',
   };
   const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+  const activeTheme = () => document.documentElement.getAttribute('data-theme') || ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  const updateThemeButton = () => {
+    const button = document.getElementById('theme-toggle');
+    if (!button) return;
+    const dark = activeTheme() === 'dark';
+    button.innerHTML = ic(dark ? 'sun' : 'moon');
+    button.setAttribute('aria-label', dark ? 'Включить светлую тему' : 'Включить тёмную тему');
+    button.title = dark ? 'Светлая тема' : 'Тёмная тема';
+  };
 
   // Готовые аватары вместо загрузки фотографий: фото человека это его персональные данные, а рисунок из набора нет.
   const AV = [
@@ -139,7 +150,7 @@
       <aside class="side"><a class="brand" href="#home"><img class="brand-mark" src="favicon.svg" alt="" width="27" height="27"><span>${esc((S.site || {}).site_name || "Черновик")}<small>${esc((S.site || {}).tagline || "Веб-журнал студентов Новосибирска")}</small></span></a>
       <nav class="nav" aria-label="Основное меню">${base.map(([k,t,i]) => `<a href="#${k}"${k === cur ? ' class="on" aria-current="page"' : ''}>${ic(i)}${t}</a>`).join('')}${isDemo() ? '<div class="demo-note">Демо-режим: данные хранятся только в этом браузере</div>' : ''}</nav>
       </aside>
-      <main class="main"><header class="topbar"><div class="topbar-context">${active === 'home' ? 'Пространство для первых публикаций' : active === 'catalog' || active === 'work' ? 'Читайте и открывайте новое' : active === 'manage' || ['mod','admin','settings'].includes(active) ? 'Управление проектом' : ''}</div><div class="topbar-actions">${manage}${me}</div></header><div class="page">${html}</div>${footer()}</main>
+      <main class="main"><header class="topbar"><div class="topbar-context">${active === 'home' ? 'Пространство для первых публикаций' : active === 'catalog' || active === 'work' ? 'Читайте и открывайте новое' : active === 'manage' || ['mod','admin','settings'].includes(active) ? 'Управление проектом' : ''}</div><div class="topbar-actions"><button class="theme-toggle" id="theme-toggle" type="button" onclick="A.toggleTheme()" aria-label="Переключить тему" title="Переключить тему">${ic(activeTheme() === "dark" ? "sun" : "moon")}</button>${manage}${me}</div></header><div class="page">${html}</div>${footer()}</main>
       <nav class="tabbar" aria-label="Быстрая навигация">${base.map(([k,t,i]) => `<a href="#${k}" class="${k === cur ? 'on' : ''}${k === 'publish' ? ' plus' : ''}">${ic(i)}<span>${k === 'publish' ? 'Создать' : t}</span></a>`).join('')}<a href="${S.me ? '#profile' : '#login'}" class="${cur === 'profile' ? 'on' : ''}">${S.me ? avatar(avOf(S.me),24) : ic('user')}<span>Кабинет</span></a></nav></div>`;
   }
 
@@ -511,6 +522,7 @@
   };
   A.demoEditor = async () => { S.me = await DB.demoEditor(); toast('Вы вошли как редактор (демо)'); render(); };
   A.manageTab = (tab) => { S.manageTab = tab; render(); };
+  A.toggleTheme = () => { const next = activeTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('cher-visitor-theme', next); } catch (_) {} updateThemeButton(); };
 
   A.saveSiteSettings = async () => {
     const keys = ['site_name','tagline','home_label','home_heading','home_lead','theme_title','theme_description','theme_deadline','announcement_title','announcement_body','about_text','accent_color','site_theme'];
@@ -673,11 +685,14 @@
       document.title = S.site.site_name || 'Черновик';
       const accent = /^#[0-9a-fA-F]{6}$/.test(S.site.accent_color || '') ? S.site.accent_color : '#e5482d';
       document.documentElement.style.setProperty('--acc', accent);
-      if (['light','dark'].includes(S.site.site_theme)) document.documentElement.setAttribute('data-theme', S.site.site_theme);
+      let visitorTheme = ''; try { visitorTheme = localStorage.getItem('cher-visitor-theme') || ''; } catch (_) {}
+      const selectedTheme = ['light','dark'].includes(visitorTheme) ? visitorTheme : S.site.site_theme;
+      if (['light','dark'].includes(selectedTheme)) document.documentElement.setAttribute('data-theme', selectedTheme);
       else document.documentElement.removeAttribute('data-theme');
       const html = await V[name](arg);
       if (t !== S.tok) return;
       $('#app').innerHTML = shell(name, html);
+      updateThemeButton();
       if (name === 'publish') { A.updateBodyCount(); A.updateFormHint(); }
     } catch (e) {
       if (t !== S.tok) return;
