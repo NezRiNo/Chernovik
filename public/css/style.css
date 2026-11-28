@@ -716,6 +716,8 @@ a.admin-stat:hover { border-color:var(--ink); }
 .upload-drop small { margin-left:auto; color:var(--mute); font-size:12px; text-align:right; }
 .visually-hidden-file { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
 .selected-attachment { display:block; padding:7px 10px; border-radius:8px; background:var(--card); font-size:13px; overflow-wrap:anywhere; }
+.selected-attachment-remove { margin-left:8px; border:0; border-radius:6px; padding:0 5px; background:transparent; color:var(--mute); font:inherit; font-size:16px; line-height:1.2; cursor:pointer; }
+.selected-attachment-remove:hover { color:var(--acc); background:color-mix(in srgb,var(--acc) 10%,transparent); }
 .preview-dialog { max-width:720px; max-height:85vh; overflow:auto; }
 .preview-dialog h2 { font:32px/1.2 Lora,serif; margin:8px 0 20px; }
 .preview-dialog .prose { padding:8px 0 18px; }
