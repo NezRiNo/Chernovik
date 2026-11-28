@@ -172,54 +172,46 @@
   V.home = async () => {
     const all = await DB.listWorks({ status: 'published', limit: 14 });
     const ws = S.homeForm ? all.filter((w) => w.form === S.homeForm) : all;
-    const hasHomeImage = (w) => !!(safeUrl(w.cover_url) || (Array.isArray(w.attachments) && w.attachments.some((x) => x.type === 'image' && safeUrl(x.url))));
-    const featured = ws.find((w) => w.form !== 'Музыка' && hasHomeImage(w)) || ws.find((w) => w.form !== 'Музыка') || ws[0];
-    const items = ws.filter((w) => !featured || w.id !== featured.id).slice(0, 4);
-    const authors = [...new Map(all.filter((w) => w.author && w.author.id !== (S.me && S.me.id)).map((w) => [w.author.id, w.author])).values()].slice(0, 3);
+    const featured = ws[0] || null;
+    const items = ws.slice(1, 7);
+    const authors = [...new Map(all.filter((w) => w.author).map((w) => [w.author.id, w.author])).values()].slice(0, 4);
     const followStates = await Promise.all(authors.map((author) => DB.followInfo(author.id, S.me && S.me.id).catch(() => ({ following: false }))));
     const announcement = (S.site || {}).announcement_title || (S.site || {}).announcement_body
-      ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
+      ? '<section class="home-announcement"><span class="eyebrow">Объявление</span>' + (S.site.announcement_title ? '<h2>' + esc(S.site.announcement_title) + '</h2>' : '') + (S.site.announcement_body ? '<p>' + esc(S.site.announcement_body) + '</p>' : '') + '</section>' : '';
     const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" role="slider" tabindex="0" aria-label="Перемотка аудио" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" onclick="A.seekCardAudio(event)" onkeydown="A.seekCardAudioKey(event)" title="Нажмите или используйте стрелки для перемотки">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" onended="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
     const postCard = (w, featuredCard = false) => {
       const homeImages = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type === 'image' && safeUrl(x.url)) : [];
       if (!homeImages.length && safeUrl(w.cover_url)) homeImages.push({ url: w.cover_url, name: 'Обложка' });
-      const image = homeImages[0] && homeImages[0].url;
       const collageImages = homeImages.slice(0, 4);
       const hiddenImageCount = Math.max(0, homeImages.length - 3);
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
-      const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
-      return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}${collageImages.length > 1 ? ' has-gallery' : ''}">
-        <a class="discover-card-link" href="#work-${esc(w.id)}">
-          <span class="discover-image${collageImages.length > 1 ? ' discover-image-collage ' + (collageImages.length === 2 ? 'is-two' : collageImages.length === 3 ? 'is-three' : 'is-four-plus') : ''}">${collageImages.length > 1 ? collageImages.map((item, index) => {
+      const imageMarkup = collageImages.length > 1
+        ? '<span class="discover-image discover-image-collage ' + (collageImages.length === 2 ? 'is-two' : collageImages.length === 3 ? 'is-three' : 'is-four-plus') + '">' + collageImages.map((item, index) => {
             const overflow = index === 3 && hiddenImageCount > 0;
-            return `<span class="discover-collage-tile${overflow ? ' is-overflow' : ''}"><img src="${esc(item.url)}" alt="" loading="lazy">${overflow ? `<span class="discover-collage-more">+${hiddenImageCount}</span>` : ''}</span>`;
-          }).join('') : image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
-          <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}<span class="discover-count">${safeCount(w.counts && w.counts.like)}</span><span class="discover-metric-separator" aria-hidden="true">·</span>${ic('message','sm')}<span class="discover-count">${safeCount(w.comment_count)}</span></span></span>
-        </a>
-        ${audio ? cardAudio(audio, w.title) : ''}
-      </article>`;
+            return '<span class="discover-collage-tile' + (overflow ? ' is-overflow' : '') + '"><img src="' + esc(item.url) + '" alt="" loading="lazy">' + (overflow ? '<span class="discover-collage-more">+' + hiddenImageCount + '</span>' : '') + '</span>';
+          }).join('') + '</span>'
+        : collageImages.length === 1
+          ? '<span class="discover-image"><img src="' + esc(collageImages[0].url) + '" alt="" loading="lazy"></span>'
+          : '<span class="discover-image discover-image-placeholder">' + ic(icon) + '</span>';
+      const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 105);
+      return '<article class="discover-work square-work-card' + (featuredCard ? ' discover-featured square-featured' : '') + (audio ? ' has-audio' : '') + (collageImages.length > 1 ? ' has-gallery' : '') + '">' +
+        '<a class="discover-card-link" href="#work-' + esc(w.id) + '">' + imageMarkup +
+          '<span class="discover-work-copy"><span class="discover-kind">' + esc(w.form) + '</span><strong>' + esc(w.title) + '</strong><span class="discover-author">' + esc(w.author && w.author.nick || 'Автор') + '</span>' +
+          (featuredCard && excerpt ? '<span class="discover-excerpt">' + esc(excerpt) + (excerpt.length >= 105 ? '…' : '') + '</span>' : '') +
+          '<span class="discover-metrics">' + ic('heart','sm') + '<span class="discover-count">' + safeCount(w.counts && w.counts.like) + '</span><span class="discover-metric-separator" aria-hidden="true">·</span>' + ic('message','sm') + '<span class="discover-count">' + safeCount(w.comment_count) + '</span></span></span></a>' +
+        (audio ? cardAudio(audio, w.title) : '') + '</article>';
     };
-    const authorList = authors.length ? authors.map((author, i) => `<div class="discover-author-row">
-      <a class="discover-author-person" href="#author-${esc(author.id)}">${avatar(avOf(author), 38)}<span><strong>${esc(author.nick || 'Автор')}</strong><small>${esc(author.uni || 'Автор Черновика')}</small></span></a>
-      ${S.me && S.me.id === author.id ? '' : `<button class="btn sm discover-follow" onclick="A.toggleFollow('${esc(author.id)}')">${followStates[i].following ? 'Вы подписаны' : 'Подписаться'}</button>`}
-    </div>`).join('') : '<p class="meta">Новые авторы скоро появятся здесь.</p>';
-    return `<div class="home-page home-discover">
-      ${announcement}
-      <section class="discover-heading">
-        <div><h1>Творчество<br>начинается здесь</h1><p>Публикуй свои работы. Находи вдохновение. Делись идеями.</p></div>
-      </section>
-      <div class="discover-layout">
-        <main class="discover-main">
-          ${featured ? `<section class="discover-featured-wrap"><div class="discover-section-head"><h2>${S.homeForm ? esc(S.homeForm) : 'Последняя работа'}</h2><a class="text-link" href="#catalog">Весь журнал ↗</a></div>${postCard(featured, true)}</section>` : `<div class="home-list-empty"><b>Пока нет публикаций в этой категории</b><p>Попробуйте другой фильтр или загляните в журнал позже.</p><button class="btn" onclick="A.homeFilter('')">Показать все работы</button></div>`}
-          ${items.length ? `<section class="discover-grid-wrap"><div class="discover-section-head"><h2>Ещё можно открыть</h2><a class="text-link" href="#catalog">Все работы ↗</a></div><div class="discover-grid">${items.map((w) => postCard(w)).join('')}</div></section>` : ''}
-        </main>
-        <aside class="discover-aside">
-          <section class="discover-authors"><div class="discover-section-head"><h2>${ic('spark')} Авторы недели</h2></div>${authorList}<a class="discover-all-authors" href="#catalog">Все авторы →</a></section>
-          <section class="discover-invite"><span class="discover-spark">${ic('spark')}</span><h3>Подписывайтесь,<br>чтобы не пропустить<br>новые работы!</h3><a class="btn p" href="#catalog">Подписаться</a></section>
-        </aside>
-      </div>
-    </div>`;
+    const authorList = authors.length ? authors.map((author, i) => '<div class="discover-author-row"><a class="discover-author-person" href="#author-' + esc(author.id) + '">' + avatar(avOf(author), 38) + '<span><strong>' + esc(author.nick || 'Автор') + '</strong><small>' + esc(author.uni || 'Автор Черновика') + '</small></span></a>' +
+      (S.me && S.me.id === author.id ? '' : '<button class="btn sm discover-follow" onclick="A.toggleFollow(\'' + esc(author.id) + '\')">' + (followStates[i].following ? 'Вы подписаны' : 'Подписаться') + '</button>') + '</div>').join('') : '<p class="meta">Новые авторы скоро появятся здесь.</p>';
+    return '<div class="home-page home-discover home-square-layout">' + announcement +
+      '<section class="discover-heading"><div><span class="eyebrow">Пространство студенческого творчества</span><h1>Работы, которыми<br>хочется делиться.</h1><p>Открывайте авторов, находите вдохновение и публикуйте своё.</p></div><a class="home-heading-action" href="#publish">' + ic('plus') + '<span>Новая работа</span></a></section>' +
+      '<main class="discover-main">' +
+        (featured ? '<section class="discover-featured-wrap"><div class="discover-section-head"><h2>' + (S.homeForm ? esc(S.homeForm) : 'Последняя работа') + '</h2><a class="text-link" href="#catalog">Весь журнал ↗</a></div><div class="home-latest-grid">' + postCard(featured, true) + '</div></section>' : '<div class="home-list-empty"><b>Пока нет публикаций</b><p>Здесь появится первая работа авторов.</p><a class="btn p" href="#publish">Опубликовать работу</a></div>') +
+        (items.length ? '<section class="discover-grid-wrap"><div class="discover-section-head"><h2>Другие работы</h2><a class="text-link" href="#catalog">Все работы ↗</a></div><div class="discover-grid">' + items.map((w) => postCard(w)).join('') + '</div></section>' : '') +
+      '</main>' +
+      '<section class="discover-authors home-authors-strip"><div class="discover-section-head"><h2>' + ic('spark') + ' Авторы</h2><a class="text-link" href="#catalog">Знакомиться ↗</a></div><div class="home-authors-grid">' + authorList + '</div></section>' +
+      '</div>';
   };
 
   V.catalog = async () => {
