@@ -2075,3 +2075,15 @@ body { background:var(--paper); }
 .article .work-gallery.is-collage { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); grid-template-rows:auto; }
 .article .work-gallery.is-collage .gallery-image:first-child,
 .article .work-gallery.is-collage .gallery-image:nth-child(n+2) { grid-column:auto; grid-row:auto; }
+
+
+/* Four-image previews use three stacked tiles beside the main image */
+.home-discover .discover-image.discover-image-collage:has(.discover-collage-tile:nth-child(4)) {
+  grid-template-rows:repeat(3,minmax(0,1fr));
+}
+.home-discover .discover-image.discover-image-collage:has(.discover-collage-tile:nth-child(4)) .discover-collage-tile:first-child {
+  grid-row:1 / span 3;
+}
+.home-discover .discover-image.discover-image-collage:has(.discover-collage-tile:nth-child(4)) .discover-collage-tile:nth-child(2) { grid-column:2; grid-row:1; }
+.home-discover .discover-image.discover-image-collage:has(.discover-collage-tile:nth-child(4)) .discover-collage-tile:nth-child(3) { grid-column:2; grid-row:2; }
+.home-discover .discover-image.discover-image-collage:has(.discover-collage-tile:nth-child(4)) .discover-collage-tile:nth-child(4) { grid-column:2; grid-row:3; display:block; }
