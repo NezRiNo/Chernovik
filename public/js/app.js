@@ -172,7 +172,8 @@
   V.home = async () => {
     const all = await DB.listWorks({ status: 'published', limit: 14 });
     const ws = S.homeForm ? all.filter((w) => w.form === S.homeForm) : all;
-    const featured = ws.find((w) => w.form !== 'Музыка' && safeUrl(w.cover_url)) || ws.find((w) => w.form !== 'Музыка') || ws[0];
+    const hasHomeImage = (w) => !!(safeUrl(w.cover_url) || (Array.isArray(w.attachments) && w.attachments.some((x) => x.type === 'image' && safeUrl(x.url))));
+    const featured = ws.find((w) => w.form !== 'Музыка' && hasHomeImage(w)) || ws.find((w) => w.form !== 'Музыка') || ws[0];
     const items = ws.filter((w) => !featured || w.id !== featured.id).slice(0, 4);
     const authors = [...new Map(all.filter((w) => w.author && w.author.id !== (S.me && S.me.id)).map((w) => [w.author.id, w.author])).values()].slice(0, 3);
     const followStates = await Promise.all(authors.map((author) => DB.followInfo(author.id, S.me && S.me.id).catch(() => ({ following: false }))));
@@ -180,7 +181,7 @@
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
     const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" role="slider" tabindex="0" aria-label="Перемотка аудио" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" onclick="A.seekCardAudio(event)" onkeydown="A.seekCardAudioKey(event)" title="Нажмите или используйте стрелки для перемотки">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" onended="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
     const postCard = (w, featuredCard = false) => {
-      const image = safeUrl(w.cover_url);
+      const image = safeUrl(w.cover_url) || (Array.isArray(w.attachments) ? (w.attachments.find((x) => x.type === 'image' && safeUrl(x.url)) || {}).url : null);
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
       const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
