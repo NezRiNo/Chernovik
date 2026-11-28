@@ -116,12 +116,7 @@
     const images = items.filter((x) => x.type === 'image' && safeUrl(x.url));
     const audio = items.find((x) => x.type === 'audio' && safeUrl(x.url));
     if (!images.length && w.cover_url && safeUrl(w.cover_url)) images.push({ url: w.cover_url, name: 'Обложка' });
-    const visibleImages = images.slice(0, 4);
-    const hiddenCount = Math.max(0, images.length - 3);
-    const gallery = images.length ? `<div class="work-gallery${images.length > 1 ? ' is-collage' : ''}" aria-label="Изображения работы">${visibleImages.map((x,i) => {
-      const overflow = i === 3 && hiddenCount > 0;
-      return `<a class="gallery-image${overflow ? ' gallery-overflow' : ''}" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(x.url)}" alt="${esc(x.name || ('Изображение ' + (i + 1)))}" loading="lazy">${overflow ? `<span class="gallery-more">+${hiddenCount}</span>` : ''}</a>`;
-    }).join('')}</div>` : '';
+    const gallery = images.length ? `<div class="work-gallery" aria-label="Изображения работы">${images.map((x,i) => `<a class="gallery-image" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(x.url)}" alt="${esc(x.name || ('Изображение ' + (i + 1)))}" loading="lazy"></a>`).join('')}</div>` : '';
     const player = audio ? `<div class="work-audio"><div class="audio-label">♫ ${esc(audio.name || 'Аудиозапись')}</div><audio controls preload="metadata" src="${esc(audio.url)}">Ваш браузер не поддерживает аудио.</audio></div>` : '';
     return gallery + player;
   };
@@ -186,13 +181,20 @@
       ? `<section class="home-announcement"><span class="eyebrow">Объявление</span>${S.site.announcement_title ? `<h2>${esc(S.site.announcement_title)}</h2>` : ''}${S.site.announcement_body ? `<p>${esc(S.site.announcement_body)}</p>` : ''}</section>` : '';
     const cardAudio = (audio, title) => '<div class="discover-card-audio"><button class="discover-audio-play" type="button" onclick="A.toggleCardAudio(this)" aria-label="Воспроизвести ' + esc(title) + '">' + ic('play') + '</button><div class="discover-audio-track"><span class="discover-audio-title">' + esc(audio.name || 'Аудиозапись') + '</span><div class="discover-audio-wave" role="slider" tabindex="0" aria-label="Перемотка аудио" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" onclick="A.seekCardAudio(event)" onkeydown="A.seekCardAudioKey(event)" title="Нажмите или используйте стрелки для перемотки">' + Array.from({length:30}, (_, i) => '<i style="--bar:' + (18 + ((i * 17 + 11) % 27)) + '%"></i>').join('') + '</div></div><time class="discover-audio-time">0:00</time><audio class="discover-audio-element" preload="metadata" src="' + esc(audio.url) + '" ontimeupdate="A.updateCardAudio(this)" onloadedmetadata="A.updateCardAudio(this)" onended="A.updateCardAudio(this)" aria-label="Слушать ' + esc(title) + '"></audio></div>';
     const postCard = (w, featuredCard = false) => {
-      const image = safeUrl(w.cover_url) || (Array.isArray(w.attachments) ? (w.attachments.find((x) => x.type === 'image' && safeUrl(x.url)) || {}).url : null);
+      const homeImages = Array.isArray(w.attachments) ? w.attachments.filter((x) => x.type === 'image' && safeUrl(x.url)) : [];
+      if (!homeImages.length && safeUrl(w.cover_url)) homeImages.push({ url: w.cover_url, name: 'Обложка' });
+      const image = homeImages[0] && homeImages[0].url;
+      const collageImages = homeImages.slice(0, 4);
+      const hiddenImageCount = Math.max(0, homeImages.length - 3);
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
       const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
       return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}">
         <a class="discover-card-link" href="#work-${esc(w.id)}">
-          <span class="discover-image">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
+          <span class="discover-image${collageImages.length > 1 ? ' discover-image-collage' : ''}">${collageImages.length > 1 ? collageImages.map((item, index) => {
+            const overflow = index === 3 && hiddenImageCount > 0;
+            return `<span class="discover-collage-tile${overflow ? ' is-overflow' : ''}"><img src="${esc(item.url)}" alt="" loading="lazy">${overflow ? `<span class="discover-collage-more">+${hiddenImageCount}</span>` : ''}</span>`;
+          }).join('') : image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
           <span class="discover-work-copy"><span class="discover-kind">${esc(w.form)}</span><strong>${esc(w.title)}</strong><span class="discover-author">${esc(w.author.nick || 'Автор')}</span>${featuredCard && excerpt ? `<span class="discover-excerpt">${esc(excerpt)}${excerpt.length >= 115 ? '…' : ''}</span>` : ''}<span class="discover-metrics">${ic('heart','sm')}<span class="discover-count">${safeCount(w.counts && w.counts.like)}</span><span class="discover-metric-separator" aria-hidden="true">·</span>${ic('message','sm')}<span class="discover-count">${safeCount(w.comment_count)}</span></span></span>
         </a>
         ${audio ? cardAudio(audio, w.title) : ''}
