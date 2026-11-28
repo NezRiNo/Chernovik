@@ -1951,3 +1951,35 @@ body { background:var(--paper); }
   }
   .home-discover .discover-featured .discover-work-copy strong { font-size:19px !important; }
 }
+
+
+/* Compact image collage for multi-image publications */
+.article .work-gallery.is-collage {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-rows:clamp(112px,18vw,220px);
+  gap:8px;
+  max-width:900px;
+  margin:18px 0 22px;
+}
+.article .work-gallery.is-collage .gallery-image { aspect-ratio:auto; min-width:0; height:100%; }
+.article .work-gallery.is-collage .gallery-image:first-child { grid-column:span 2; grid-row:span 2; }
+.article .work-gallery.is-collage .gallery-image:nth-child(2),
+.article .work-gallery.is-collage .gallery-image:nth-child(3),
+.article .work-gallery.is-collage .gallery-image:nth-child(4) { min-height:0; }
+.article .work-gallery.is-collage .gallery-image:only-child { grid-column:1/-1; }
+.gallery-overflow { position:relative; }
+.gallery-overflow img { filter:blur(3px) brightness(.58); transform:scale(1.05); }
+.gallery-more { position:absolute; inset:0; display:grid; place-items:center; color:#fff; font-size:clamp(22px,3vw,34px); font-weight:700; letter-spacing:-.03em; text-shadow:0 2px 12px #0008; }
+.tag-picker { position:relative; }
+.tag-picker-input { display:flex; align-items:stretch; gap:0; }
+.tag-picker-input input { min-width:0; flex:1 1 auto; border-radius:10px 0 0 10px; }
+.tag-picker-toggle { flex:0 0 44px; border:1px solid var(--line); border-left:0; border-radius:0 10px 10px 0; background:var(--card); color:var(--ink); cursor:pointer; font-size:17px; }
+.tag-picker-toggle:hover { color:var(--acc); }
+.tag-picker-panel { position:absolute; z-index:20; top:calc(100% + 6px); left:0; right:0; display:flex; flex-wrap:wrap; gap:7px; max-height:190px; overflow:auto; padding:11px; border:1px solid var(--line); border-radius:12px; background:var(--card); box-shadow:0 12px 30px #0002; }
+.tag-picker-panel[hidden] { display:none; }
+.tag-picker-option { padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:var(--paper); color:var(--ink); cursor:pointer; font:inherit; font-size:12px; }
+.tag-picker-option:hover,.tag-picker-option.selected { border-color:var(--acc); background:color-mix(in srgb,var(--acc) 12%,var(--card)); color:var(--acc); }
+@media(max-width:600px) {
+  .article .work-gallery.is-collage { grid-template-rows:clamp(92px,27vw,150px); gap:6px; }
+}
