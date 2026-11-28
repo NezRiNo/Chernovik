@@ -2490,3 +2490,64 @@ body { background:var(--paper); }
   .home-square-layout .discover-grid { grid-template-columns:minmax(0,1fr); }
   .home-square-layout .discover-grid .square-work-card { aspect-ratio:1 / 1; }
 }
+
+
+/* Compact square cards: keep the artwork visible without oversized tiles */
+.home-square-layout .home-latest-grid {
+  grid-template-columns:minmax(0, 360px);
+  justify-content:start;
+}
+.home-square-layout .discover-grid {
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+.home-square-layout .square-work-card {
+  width:100%;
+  max-width:100%;
+  aspect-ratio:1 / 1;
+  border-radius:26px;
+}
+.home-square-layout .discover-grid .square-work-card .discover-work-copy {
+  gap:5px;
+  padding:14px;
+}
+.home-square-layout .discover-grid .square-work-card .discover-work-copy strong {
+  font-size:clamp(14px,1.15vw,17px);
+  line-height:1.16;
+}
+.home-square-layout .discover-grid .square-work-card .discover-kind {
+  padding:4px 8px;
+  font-size:9px;
+}
+.home-square-layout .discover-grid .square-work-card .discover-author,
+.home-square-layout .discover-grid .square-work-card .discover-metrics {
+  font-size:10px;
+}
+.home-square-layout .square-work-card .discover-image > img,
+.home-square-layout .square-work-card .discover-collage-tile img {
+  object-fit:cover;
+  object-position:center;
+}
+.home-square-layout .square-work-card .discover-card-audio {
+  left:10px;
+  right:10px;
+  bottom:10px;
+  padding:7px 9px;
+}
+.home-square-layout .square-work-card.has-audio .discover-work-copy {
+  bottom:60px;
+}
+@media(max-width:1100px) {
+  .home-square-layout .discover-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; }
+}
+@media(max-width:760px) {
+  .home-square-layout .home-latest-grid { grid-template-columns:minmax(0,320px); }
+  .home-square-layout .discover-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .home-square-layout .square-work-card { border-radius:23px; }
+}
+@media(max-width:420px) {
+  .home-square-layout .home-latest-grid { grid-template-columns:minmax(0,1fr); }
+  .home-square-layout .discover-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+  .home-square-layout .discover-grid .square-work-card .discover-work-copy { padding:10px; }
+  .home-square-layout .discover-grid .square-work-card .discover-work-copy strong { font-size:14px; }
+}
