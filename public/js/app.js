@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  const FORMS = ['Проза', 'Стихи', 'Иллюстрация', 'Фото', 'Музыка'];
+  const FORMS = ['Проза', 'Стихи', 'Иллюстрация', 'Фото', 'Музыка', 'Рукоделие'];
   const UNIS = ['НГУ', 'НГТУ (НЭТИ)', 'НГПУ', 'НГМУ', 'НГАУ', 'НГАСУ (Сибстрин)', 'НГУЭУ (НИНХ)', 'НГУАДИ', 'СибГУТИ', 'СГУПС', 'СГУГиТ', 'СГУВТ', 'СГУИиБ', 'СибУПК', 'СИУ РАНХиГС', 'НГТИ', 'НГК им. Глинки', 'НТИ (филиал РГУ им. Косыгина)', 'НЮИ (филиал ТГУ)'];
   const REASONS = [
     ['Оскорбления и травля', 'Грубость, унижение, личные нападки'],
@@ -123,7 +123,7 @@
 
   /* ---------- Общие куски разметки ---------- */
   const tagsOf = (tags = []) => (Array.isArray(tags) ? tags : []).slice(0, 5).map((t) => `<span class="chip tag">${esc(t)}</span>`).join('');
-  const CARD_ICONS = { 'Проза': 'pen', 'Стихи': 'spark', 'Иллюстрация': 'grid', 'Фото': 'eye', 'Музыка': 'audio' };
+  const CARD_ICONS = { 'Проза': 'pen', 'Стихи': 'spark', 'Иллюстрация': 'grid', 'Фото': 'eye', 'Музыка': 'audio', 'Рукоделие': 'spark' };
   const card = (w) => {
     const hasCover = !!safeUrl(w.cover_url);
     const mark = `<span class="work-mark" aria-hidden="true">${ic(CARD_ICONS[w.form] || 'pen')}</span>`;
@@ -658,7 +658,8 @@
   };
   A.submit = async () => {
     const er = $('#er'), title = val('pt'), body = val('pb');
-    const files = Array.from($('#cv').files || []);
+    const fileInput = $('#cv');
+    const files = Array.from(fileInput && (fileInput._selectedFiles || fileInput.files) || []);
     const audio = ($('#af') && $('#af').files[0]) || null;
     const allowedAudio = ['audio/mpeg','audio/mp3','audio/mp4','audio/aac','audio/ogg','audio/wav','audio/webm','audio/flac','audio/x-wav'];
     const bad = !title ? 'Добавьте название' : title.length > 140 ? 'Название должно быть не длиннее 140 символов'
@@ -686,11 +687,32 @@
   A.toggleEmoji = () => { const p = $('#emoji-picker'); if (p) p.hidden = !p.hidden; };
   A.insertEmoji = (emoji) => { const f = $('#ci'); if (!f || f.disabled) return; const a=f.selectionStart,b=f.selectionEnd,v=f.value; f.value=v.slice(0,a)+emoji+v.slice(b); f.focus(); f.selectionStart=f.selectionEnd=a+emoji.length; const p=$('#emoji-picker'); if(p)p.hidden=true; };
 
-  A.showSelectedFiles = (input) => { const box = $('#selected-file'); if (!box) return; box.innerHTML = Array.from(input.files || []).map((file) => '<span class="selected-attachment">▧ ' + esc(file.name) + ' · ' + (file.size / 1048576).toFixed(1) + ' МБ</span>').join(''); };
+  A.showSelectedFiles = (input) => {
+    const box = $('#selected-file');
+    if (!box || !input) return;
+    const previous = Array.from(input._selectedFiles || []);
+    const added = Array.from(input.files || []);
+    const merged = [...previous];
+    added.forEach((file) => {
+      const duplicate = merged.some((item) => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified);
+      if (!duplicate) merged.push(file);
+    });
+    input._selectedFiles = merged;
+    input.value = '';
+    box.innerHTML = merged.map((file, index) => '<span class="selected-attachment">▧ ' + esc(file.name) + ' · ' + (file.size / 1048576).toFixed(1) + ' МБ <button type="button" class="selected-attachment-remove" onclick="A.removeSelectedFile(' + index + ')" aria-label="Убрать ' + esc(file.name) + '">×</button></span>').join('');
+  };
+  A.removeSelectedFile = (index) => {
+    const input = $('#cv');
+    if (!input) return;
+    const files = Array.from(input._selectedFiles || input.files || []);
+    files.splice(index, 1);
+    input._selectedFiles = files;
+    A.showSelectedFiles({ _selectedFiles: files, files: [] });
+  };
   A.showSelectedAudio = (input) => { const box = $('#selected-audio'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span class="selected-attachment">♫ ' + esc(input.files[0].name) + ' · ' + (input.files[0].size / 1048576).toFixed(1) + ' МБ</span>' : ''; };
   A.formatText = (before, after) => { const field=$('#pb'); if(!field)return; const a=field.selectionStart,b=field.selectionEnd, value=field.value; const selected=value.slice(a,b)||'текст'; field.value=value.slice(0,a)+before+selected+after+value.slice(b); field.focus(); field.setSelectionRange(a+before.length,a+before.length+selected.length); A.updateBodyCount(); };
   A.updateBodyCount = () => { const field=$('#pb'), count=$('#body-count'); if(field&&count) count.textContent=field.value.length.toLocaleString('ru-RU')+' / 50 000'; };
-  A.updateFormHint = () => { const form=val('pf'), hint=$('#form-hint'), field=$('#pb'); if(!hint||!field)return; const map={'Проза':['Текст произведения','Вставьте текст, разделяя абзацы пустой строкой.'],'Стихи':['Текст стихотворения','Сохраняйте переносы строк — они останутся в публикации.'],'Иллюстрация':['Описание иллюстрации','Расскажите об идее, технике или истории создания. Изображения добавьте ниже.'],'Фото':['История фотоработы','Добавьте подпись или расскажите о серии снимков. Фотографии прикрепите ниже.'],'Музыка':['О музыке','Расскажите о композиции, а аудиофайл прикрепите ниже.']}; const item=map[form]||['Содержание','Текст, описание или подпись к вашей работе.']; const label=document.querySelector('label[for="pb"]'); if(label)label.textContent=item[0]+' *'; field.placeholder=item[1]; hint.textContent=item[1]; };
+  A.updateFormHint = () => { const form=val('pf'), hint=$('#form-hint'), field=$('#pb'); if(!hint||!field)return; const map={'Проза':['Текст произведения','Вставьте текст, разделяя абзацы пустой строкой.'],'Стихи':['Текст стихотворения','Сохраняйте переносы строк — они останутся в публикации.'],'Иллюстрация':['Описание иллюстрации','Расскажите об идее, технике или истории создания. Изображения добавьте ниже.'],'Фото':['История фотоработы','Добавьте подпись или расскажите о серии снимков. Фотографии прикрепите ниже.'],'Музыка':['О музыке','Расскажите о композиции, а аудиофайл прикрепите ниже.'],'Рукоделие':['Описание изделия','Расскажите, что вы создали, какие материалы и техники использовали. Фотографии добавьте ниже.']}; const item=map[form]||['Содержание','Текст, описание или подпись к вашей работе.']; const label=document.querySelector('label[for="pb"]'); if(label)label.textContent=item[0]+' *'; field.placeholder=item[1]; hint.textContent=item[1]; };
 
   A.previewWork = () => { const title=val('pt')||'Без названия', body=val('pb'); const safe=esc(body).replace(/^## (.+)$/gm,'<h3>$1</h3>').replace(/^&gt; (.+)$/gm,'<blockquote>$1</blockquote>').replace(/^[-*] (.+)$/gm,'<li>$1</li>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_(.+?)_/g,'<em>$1</em>').split(/\n{2,}/).map(p=>p.startsWith('<h3>')||p.startsWith('<blockquote>')||p.startsWith('<li>')?p:`<p>${p.replace(/\n/g,'<br>')}</p>`).join(''); $('#modal').innerHTML=`<div class="ov" onclick="if(event.target===this)A.close()"><div class="dialog preview-dialog"><div class="label">Предпросмотр публикации</div><h2>${esc(title)}</h2><div class="prose">${safe||'<p>Здесь появится ваш текст.</p>'}</div><button class="btn p" onclick="A.close()">Продолжить редактирование</button></div></div>`; };
 
