@@ -116,7 +116,12 @@
     const images = items.filter((x) => x.type === 'image' && safeUrl(x.url));
     const audio = items.find((x) => x.type === 'audio' && safeUrl(x.url));
     if (!images.length && w.cover_url && safeUrl(w.cover_url)) images.push({ url: w.cover_url, name: 'Обложка' });
-    const gallery = images.length ? `<div class="work-gallery" aria-label="Изображения работы">${images.map((x,i) => `<a class="gallery-image" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(x.url)}" alt="${esc(x.name || ('Изображение ' + (i + 1)))}" loading="lazy"></a>`).join('')}</div>` : '';
+    const visibleImages = images.slice(0, 4);
+    const hiddenCount = Math.max(0, images.length - 3);
+    const gallery = images.length ? `<div class="work-gallery${images.length > 1 ? ' is-collage' : ''}" aria-label="Изображения работы">${visibleImages.map((x,i) => {
+      const overflow = i === 3 && hiddenCount > 0;
+      return `<a class="gallery-image${overflow ? ' gallery-overflow' : ''}" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer"><img src="${esc(x.url)}" alt="${esc(x.name || ('Изображение ' + (i + 1)))}" loading="lazy">${overflow ? `<span class="gallery-more">+${hiddenCount}</span>` : ''}</a>`;
+    }).join('')}</div>` : '';
     const player = audio ? `<div class="work-audio"><div class="audio-label">♫ ${esc(audio.name || 'Аудиозапись')}</div><audio controls preload="metadata" src="${esc(audio.url)}">Ваш браузер не поддерживает аудио.</audio></div>` : '';
     return gallery + player;
   };
@@ -366,7 +371,7 @@
         <div class="field"><label for="pu">Вуз</label><select id="pu">${options(UNIS, (w && w.uni) || S.me.uni)}</select></div></div>
         <div class="field"><div class="editor-field-head"><label for="pb">Содержание *</label><span id="body-count" class="hint">0 / 50 000</span></div><div class="editor-toolbar" role="toolbar" aria-label="Форматирование текста"><button type="button" onclick="A.formatText('**','**')" title="Полужирный"><b>B</b></button><button type="button" onclick="A.formatText('_','_')" title="Курсив"><i>I</i></button><button type="button" onclick="A.formatText('## ','')" title="Заголовок">H</button><button type="button" onclick="A.formatText('> ','')" title="Цитата">“</button><button type="button" onclick="A.formatText('- ','')" title="Список">☷</button><span class="toolbar-spacer"></span><button type="button" class="toolbar-preview" onclick="A.previewWork()" title="Предпросмотр">Предпросмотр</button></div><textarea id="pb" class="editor-body" rows="12" maxlength="50000" oninput="A.updateBodyCount()" placeholder="Начните с главной мысли…\n\nРазделяйте абзацы пустой строкой. Можно использовать кнопки форматирования.">${esc(w ? w.body : '')}</textarea><div class="hint" id="form-hint">Текст, описание или подпись к вашей работе.</div></div>
         <div class="field"><label for="pd">Описание к работе</label><textarea id="pd" rows="3" maxlength="1000" placeholder="Пара слов о том, как она появилась">${esc(w ? w.description : '')}</textarea></div>
-        <div class="field"><label for="ptags">Теги (до 5 на работу)</label><input id="ptags" list="known-tags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Выберите существующие или предложите новые"><datalist id="known-tags">${knownTags.map((t) => `<option value="${esc(t)}">`).join('')}</datalist><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
+        <div class="field"><label for="ptags">Теги (до 5 на работу)</label><div class="tag-picker"><div class="tag-picker-input"><input id="ptags" maxlength="140" value="${esc((w && w.tags || []).join(', '))}" placeholder="Введите теги через запятую"><button type="button" class="tag-picker-toggle" onclick="A.toggleTagPicker()" aria-label="Показать существующие теги" aria-expanded="false">▾</button></div><div class="tag-picker-panel" id="tag-picker-panel" hidden>${knownTags.length ? knownTags.map((t) => `<button type="button" class="tag-picker-option" onclick="A.toggleKnownTag('${esc(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${esc(t)}</button>`).join('') : '<span class="hint">Пока нет существующих тегов — можно добавить свои.</span>'}</div></div><div class="hint">Не более 5 тегов на работу и 30 разных тегов во всём журнале.</div></div>
         <div class="field editor-upload"><label for="cv">Изображения</label><label class="upload-drop" for="cv"><span class="upload-icon">＋</span><b>Добавить изображения</b><small>JPG, PNG или WebP · до 8 файлов</small></label><input id="cv" class="visually-hidden-file" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="A.showSelectedFiles(this)"><div class="hint">До 8 изображений, JPG, PNG или WebP. Не более 50 МБ на файл.</div><div id="selected-file" class="attached-file"></div>
           ${w && (w.attachments || []).some((x) => x.type === 'image') ? `<div class="existing-media"><span>В работе уже есть изображения — они сохранятся.</span></div>` : w && w.cover_url ? '<div class="existing-media">Текущая обложка сохранится.</div>' : ''}
         </div>
@@ -708,6 +713,28 @@
     files.splice(index, 1);
     input._selectedFiles = files;
     A.showSelectedFiles({ _selectedFiles: files, files: [] });
+  };
+  A.toggleTagPicker = () => {
+    const panel = $('#tag-picker-panel'), button = document.querySelector('.tag-picker-toggle');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (button) button.setAttribute('aria-expanded', String(!panel.hidden));
+  };
+  A.toggleKnownTag = (tag) => {
+    const input = $('#ptags');
+    if (!input) return;
+    const tags = input.value.split(',').map((item) => item.trim().replace(/^#/, '')).filter(Boolean);
+    const index = tags.findIndex((item) => item.toLowerCase() === tag.toLowerCase());
+    if (index >= 0) tags.splice(index, 1);
+    else if (tags.length < 5) tags.push(tag);
+    else return toast('Можно выбрать не больше 5 тегов');
+    input.value = tags.join(', ');
+    const panel = $('#tag-picker-panel');
+    if (panel) panel.querySelectorAll('.tag-picker-option').forEach((option) => {
+      const selected = tags.some((item) => item.toLowerCase() === option.textContent.trim().toLowerCase());
+      option.classList.toggle('selected', selected);
+      option.setAttribute('aria-pressed', String(selected));
+    });
   };
   A.showSelectedAudio = (input) => { const box = $('#selected-audio'); if (!box) return; box.innerHTML = input.files && input.files[0] ? '<span class="selected-attachment">♫ ' + esc(input.files[0].name) + ' · ' + (input.files[0].size / 1048576).toFixed(1) + ' МБ</span>' : ''; };
   A.formatText = (before, after) => { const field=$('#pb'); if(!field)return; const a=field.selectionStart,b=field.selectionEnd, value=field.value; const selected=value.slice(a,b)||'текст'; field.value=value.slice(0,a)+before+selected+after+value.slice(b); field.focus(); field.setSelectionRange(a+before.length,a+before.length+selected.length); A.updateBodyCount(); };
