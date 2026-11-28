@@ -189,9 +189,9 @@
       const audio = Array.isArray(w.attachments) ? w.attachments.find((x) => x.type === 'audio' && safeUrl(x.url)) : null;
       const icon = CARD_ICONS[w.form] || 'pen';
       const excerpt = (w.description || w.body || '').replace(/<[^>]*>/g, '').trim().slice(0, 115);
-      return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}">
+      return `<article class="discover-work${featuredCard ? ' discover-featured' : ''}${audio ? ' has-audio' : ''}${collageImages.length > 1 ? ' has-gallery' : ''}">
         <a class="discover-card-link" href="#work-${esc(w.id)}">
-          <span class="discover-image${collageImages.length > 1 ? ' discover-image-collage' : ''}">${collageImages.length > 1 ? collageImages.map((item, index) => {
+          <span class="discover-image${collageImages.length > 1 ? ' discover-image-collage ' + (collageImages.length === 2 ? 'is-two' : collageImages.length === 3 ? 'is-three' : 'is-four-plus') : ''}">${collageImages.length > 1 ? collageImages.map((item, index) => {
             const overflow = index === 3 && hiddenImageCount > 0;
             return `<span class="discover-collage-tile${overflow ? ' is-overflow' : ''}"><img src="${esc(item.url)}" alt="" loading="lazy">${overflow ? `<span class="discover-collage-more">+${hiddenImageCount}</span>` : ''}</span>`;
           }).join('') : image ? `<img src="${esc(image)}" alt="" loading="lazy">` : ic(icon)}</span>
